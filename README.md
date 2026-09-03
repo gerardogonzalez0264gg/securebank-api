@@ -40,3 +40,15 @@ Este proyecto sigue un flujo de trabajo basado en ramas protegidas, con integrac
 5. Ante una vulnerabilidad o bug urgente, se crea una rama `hotfix/*` directo desde `main`, se corrige y se mergea de vuelta a `main` (y luego se sincroniza con `develop`).
 
 > ⚠️ **Regla de oro:** toda entrada a `main` pasa por Pull Request revisado. Sin excepciones.
+
+## § 2 · Roles y responsabilidades
+ 
+| Rol | Responsabilidad |
+|---|---|
+| **Developer** | Desarrolla en ramas `feature/*`, abre Pull Requests, no puede mergear su propio código a `develop` ni a `main`. |
+| **Reviewer** | Aprueba PRs dentro de su equipo. Verifica calidad, estándares y que no haya secretos expuestos. |
+| **Code Owner** | Dueño técnico de una ruta o módulo (definido en `CODEOWNERS`). Su aprobación es obligatoria para cambios en su área, incluidos `.github/workflows/`. |
+| **Release Manager** | Único rol habilitado para crear tags/releases sobre `main`. Verifica checklist de aprobación previa. |
+| **Secret Custodian** | Los 2 revisores externos con acceso a secretos productivos. Gestionan rotación y auditoría de accesos. |
+ 
+---
