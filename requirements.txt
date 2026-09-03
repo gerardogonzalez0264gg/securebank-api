@@ -1,1 +1,4 @@
 # Dependencias del proyecto
+Node 24 LTS
+PostgreSQL
+Pyhton 3.6
