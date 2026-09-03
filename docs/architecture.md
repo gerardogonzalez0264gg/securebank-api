@@ -1,25 +1,46 @@
 # Arquitectura de SecureBank API
 
-## Capas principales
+## Estructura del proyecto
 
-### Presentación
-Endpoints de la API.
+El proyecto se organiza en diferentes componentes para separar
+responsabilidades y facilitar el mantenimiento y la seguridad.
 
-### Lógica de negocio
-Procesamiento de autenticación,
-cuentas y transferencias.
+### src/
 
-### Datos
-Persistencia de usuarios,
-cuentas y movimientos.
+Contiene los componentes principales de la aplicación.
 
-## Seguridad
+- auth/: autenticación y autorización.
+- accounts/: gestión de cuentas.
+- transfers/: operaciones de transferencia.
+- users/: gestión de usuarios.
 
-La arquitectura considera:
+### tests/
 
-- autenticación
-- autorización
-- validación de entradas
-- auditoría
-- protección de secretos
-- controles DevSecOps
+Contiene las pruebas del sistema.
+
+- unit/: pruebas unitarias.
+- integration/: pruebas de integración.
+
+### docs/
+
+Contiene la documentación técnica y de seguridad.
+
+- architecture.md: documentación de la arquitectura.
+- threat-model.md: modelo de amenazas.
+
+### .github/
+
+Contiene configuraciones relacionadas con GitHub y CI/CD.
+
+- workflows/ci.yml: pipeline automatizado.
+- CODEOWNERS: responsables de revisión del código.
+
+## Principios
+
+La arquitectura busca aplicar:
+
+- separación de responsabilidades;
+- mínimo privilegio;
+- revisión de cambios;
+- automatización de pruebas;
+- seguridad desde el diseño.
