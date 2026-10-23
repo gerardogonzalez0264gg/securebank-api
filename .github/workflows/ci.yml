@@ -1,6 +1,7 @@
 name: SecurePipeline CI
 on:
   push:
+    branches: [ "**" ]
   pull_request:
     branches: [ "main" ]
 jobs:
@@ -20,6 +21,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Run unit tests
         run: pytest
+
   sast:
     name: SAST Scan (Semgrep)
     needs: unit-tests
@@ -27,12 +29,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Install and Run Semgrep
         run: |
-           python3 -m pip install semgrep
+          python3 -m pip install semgrep
           semgrep --config=p/owasp-top-ten --sarif --output=sast-before.sarif || true
-
       - name: Upload SARIF Report
         uses: actions/upload-artifact@v4
         with:
