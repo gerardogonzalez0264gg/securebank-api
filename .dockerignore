@@ -1,0 +1,13 @@
+# Evita que secretos queden grabados en las capas de la imagen
+.git
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa
+credentials.json
+secrets.json
+tests/
+__pycache__/
+*.pyc
