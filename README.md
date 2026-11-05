@@ -1,5 +1,7 @@
 # SecureBank API
 
+![CI](https://github.com/gerardogonzalez0264gg/securebank-api/actions/workflows/ci.yml/badge.svg)
+
 Proyecto académico de DevSecOps.
 
 ## Descripción
