@@ -91,41 +91,33 @@ En SecureBank se consideran:
 
 ---
 
-## 6. Data Flow Diagram (DFD) conceptual
+## 6. Diagrama de flujo de datos (DFD)
 
-El flujo principal del sistema se representa de la siguiente manera:
+Las zonas con línea punteada son las fronteras de confianza (TB01 a TB05).
 
-```text
-[Usuario]
-    |
-    | HTTPS
-    v
-[Frontend Web]
-    |
-    | Solicitudes HTTP/HTTPS
-    v
-[Backend REST API]
-    |
-    +--------------------+
-    |                    |
-    v                    v
-[Servicio de          [Base de
- Autenticación]         Datos]
-    |
-    v
-[Tokens JWT]
+```mermaid
+flowchart LR
+  subgraph EXT["Internet"]
+    U[Usuario]
+  end
+  subgraph PUB["Zona pública"]
+    F[Frontend web]
+  end
+  subgraph INT["Red interna"]
+    A[API REST]
+    AU[Servicio de autenticación]
+    DB[(Base de datos)]
+  end
+  U -->|"TB01 · HTTPS"| F
+  F -->|"TB02 · Solicitudes"| A
+  A -->|"TB03 · Validar token"| AU
+  A -->|"TB04 · Consultas"| DB
+  style EXT stroke:#1f6feb,stroke-dasharray: 5 5
+  style PUB stroke:#1f6feb,stroke-dasharray: 5 5
+  style INT stroke:#1f6feb,stroke-dasharray: 5 5
 ```
 
-### Flujos principales
-
-1. El usuario interactúa con el frontend.
-2. El frontend envía solicitudes al backend REST API.
-3. El backend procesa las solicitudes.
-4. El servicio de autenticación valida la identidad del usuario.
-5. El backend consulta o modifica información en la base de datos.
-6. Las operaciones realizadas generan información que puede formar parte del historial de movimientos.
-
----
+En cada cruce se debe revisar la entrada, comprobar quién es el usuario y ver si tiene permiso.
 
 ## 7. Fronteras de confianza
 
