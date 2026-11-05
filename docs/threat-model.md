@@ -415,25 +415,39 @@ Un atacante intenta modificar los parámetros de la solicitud para realizar una 
 
 ## 12. Security Stories
 
-### SS01 - Autorización de cuentas
+Hay una historia por cada amenaza. Están ordenadas de más a menos urgente.
 
+### SS01 - Autorización de cuentas (T04)
 Como usuario autenticado, quiero que el sistema valide que soy propietario o tengo autorización sobre una cuenta antes de acceder a ella, para evitar accesos no autorizados.
 
-### SS02 - Protección de transferencias
+### SS02 - Protección de transferencias (T02)
+Como usuario autenticado, quiero que el sistema valide mi autorización sobre la cuenta de origen antes de realizar una transferencia, para evitar transferencias desde cuentas ajenas. Si no soy el dueño, responde 403 y guarda el intento.
 
-Como usuario autenticado, quiero que el sistema valide mi autorización sobre la cuenta de origen antes de realizar una transferencia, para evitar transferencias desde cuentas ajenas.
-
-### SS03 - Protección de entradas
-
+### SS03 - Protección de entradas (T07)
 Como sistema, quiero validar las entradas recibidas por la API, para reducir el riesgo de inyección y manipulación de parámetros.
 
-### SS04 - Protección de credenciales
+### SS06 - Login seguro (T01)
+Como organización, quiero exigir una verificación extra (MFA) y contraseñas fuertes al iniciar sesión, para que unas credenciales robadas no sirvan por sí solas.
 
+### SS08 - Tokens confiables (T06)
+Como sistema, quiero comprobar la firma y el vencimiento de cada token JWT y leer el rol solo desde el servidor, para que nadie pueda subirse el rol a admin.
+
+### SS04 - Protección de credenciales (T08)
 Como organización, quiero mantener las credenciales y secretos fuera del código fuente, para reducir el riesgo de exposición.
 
-### SS05 - Trazabilidad
+### SS07 - Límite de intentos (T05)
+Como sistema, quiero limitar la cantidad de intentos de login por IP y por usuario, para que un bot no pueda tumbar el servicio.
 
+### SS09 - Librerías al día (T09)
+Como equipo, quiero revisar las librerías en cada build y usar versiones fijas, para no usar piezas con fallas conocidas.
+
+### SS10 - Contenedor sin privilegios (T10)
+Como equipo, quiero que el contenedor corra con un usuario normal y no como root, para que un ataque no tome el control del servidor.
+
+### SS05 - Trazabilidad (T03)
 Como organización, quiero registrar las operaciones financieras realizadas, para mantener trazabilidad y facilitar la investigación de incidentes.
+
+**Fecha de próxima revisión del Threat Model:** 2026-12-05
 
 ---
 
