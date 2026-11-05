@@ -2,62 +2,69 @@
 
 ## Objetivo
 
-El pipeline CI/CD de SecureBank tiene como objetivo automatizar diferentes etapas del ciclo de desarrollo y permitir incorporar controles de seguridad durante el proceso de desarrollo.
+Automatizar el camino del código: bajarlo, compilarlo, probarlo y guardarlo, y dejar un lugar listo para sumar controles de seguridad.
 
 ## Flujo del pipeline
-
-El flujo conceptual definido para SecureBank es:
 
 1. Commit
 2. Build
 3. Unit Test
-4. Security Test
+4. Security Test (se agrega en la clase 5)
 5. Package
 6. Deploy
 
-## Etapas
+## Pipeline actual (CI v1.0)
 
-### 1. Commit
+El archivo es `.github/workflows/ci.yml`. Se activa con cada push a `main` o `feature/**` y con cada PR hacia `main`. Hace esto:
 
-El proceso comienza cuando se realiza un cambio en el repositorio.
+1. Descarga el código (checkout).
+2. Prepara Node 20.
+3. Instala las librerías con `npm ci` (versiones exactas).
+4. Compila (`npm run build`).
+5. Corre las pruebas (`npm test`).
+6. Guarda el resultado `dist/` como artefacto por 7 días, con el código del commit en el nombre.
 
-Los cambios deben ser revisados antes de incorporarse a la rama principal.
+Tiene permisos mínimos (`contents: read`) y no guarda secretos en el archivo.
 
-### 2. Build
+## Tres formas de automatizar
 
-En esta etapa se prepara el proyecto para las siguientes etapas del pipeline.
+| Práctica | Hasta dónde llega solo | ¿Aprueba una persona? |
+|---|---|---|
+| Integración continua (CI) | Compila y prueba | No aplica al despliegue |
+| Entrega continua | Deja todo listo en staging | Sí, una persona decide pasar a producción |
+| Despliegue continuo | Llega a producción | No, todo es automático |
 
-### 3. Unit Test
+SecureBank es un banco, así que lo correcto sería entrega continua, con aprobación humana.
 
-Se ejecutan las pruebas unitarias para verificar el funcionamiento de componentes individuales.
+## Piezas del pipeline
 
-### 4. Security Test
+| Pieza | Qué es |
+|---|---|
+| Runner | La máquina que ejecuta el trabajo (`ubuntu-latest`) |
+| Job | Un grupo de pasos (`build-test`) |
+| Step | Un paso suelto (`npm ci`) |
+| Artifact | El archivo que deja el trabajo (`dist/`) |
+| Environment | El lugar de destino (dev, staging, producción) |
+| Trigger | Lo que lo activa (push o pull request) |
+| Secret | Un dato privado guardado fuera del archivo |
+| Workflow | El archivo completo (`ci.yml`) |
 
-Se realizan controles orientados a detectar problemas de seguridad.
+## Ejercicio: pipeline inseguro
 
-Estos controles forman parte del enfoque DevSecOps y permiten incorporar seguridad desde las primeras etapas del desarrollo.
-
-### 5. Package
-
-Se prepara el artefacto que será utilizado en las siguientes etapas.
-
-### 6. Deploy
-
-El artefacto preparado puede ser utilizado para realizar el despliegue hacia el entorno correspondiente.
+| # | Línea peligrosa | Qué podría hacer un atacante | Corrección | Tipo STRIDE |
+|---|---|---|---|---|
+| R1 | `permissions: write-all` | Con un token robado podría cambiar el repo y publicar versiones | `permissions: contents: read` | Elevación de privilegios |
+| R2 | `curl http://... \| sudo bash` | Si alguien hackea ese sitio, corre su código con permisos de administrador | Usar acciones oficiales con versión fija y no ejecutar scripts sin verificar | Manipulación |
+| R3 | `npm install express body-parser jsonwebtoken` | Si una librería cambia, entra código malicioso en cada build | Usar `npm ci` con `package-lock.json` y agregar `npm audit` | Manipulación |
+| R4 | `DB_PASSWORD: 'P@ssw0rd...'` | Quien vea el repo ve la clave, y queda en el historial para siempre | `DB_PASSWORD: ${{ secrets.DB_PASSWORD }}` y cambiar la clave | Divulgación de información |
 
 ## Seguridad del pipeline
 
-El pipeline debe considerar los siguientes controles:
-
-- No almacenar secretos directamente en los archivos del repositorio.
-- Utilizar mecanismos seguros para gestionar secretos.
-- Limitar los permisos utilizados por el pipeline.
-- Utilizar acciones y herramientas confiables.
-- Mantener la configuración del pipeline versionada en el repositorio.
-- Incorporar controles de seguridad durante el ciclo de desarrollo.
+- No guardar secretos en el repositorio.
+- Usar permisos mínimos.
+- Usar solo acciones confiables y con versión fija.
+- Mantener el pipeline versionado y revisado por PR.
 
 ## Estado actual
 
-Este documento representa el diseño conceptual del pipeline de SecureBank.
-
-La implementación funcional del pipeline se realizará únicamente cuando sea requerida por las actividades del curso.
+El pipeline CI v1.0 funciona. Falta la etapa de Security Test (clase 5) y el despliegue.
