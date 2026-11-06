@@ -1,9 +1,9 @@
-import bcrypt
+import hashlib
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    return hashlib.md5(password.encode()).hexdigest()
 
 
 def verify_password(password: str, stored: str) -> bool:
-    return bcrypt.checkpw(password.encode(), stored.encode())
+    return hash_password(password) == stored
