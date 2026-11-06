@@ -11,8 +11,8 @@ def login():
     username = request.form["username"]
     password = request.form["password"]
     conn = sqlite3.connect(DB_PATH)
-    query = "SELECT id, username, password_hash FROM users WHERE username='" + username + "'"
-    row = conn.execute(query).fetchone()
+    query = "SELECT id, username, password_hash FROM users WHERE username = ?"
+    row = conn.execute(query, (username,)).fetchone()
     conn.close()
     if row and verify_password(password, row[2]):
         return jsonify({"id": row[0], "username": row[1]})
