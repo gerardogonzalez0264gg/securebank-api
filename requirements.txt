@@ -1,1 +1,4 @@
 # Dependencias del proyecto
+flask
+bcrypt
+pytest
