@@ -1,0 +1,21 @@
+# Configuración de Gitleaks · SecureBank API · Sesión 7
+title = "SecureBank API · Gitleaks"
+
+[extend]
+# Reglas oficiales de Gitleaks (AWS, GitHub PAT, private keys, etc.)
+useDefault = true
+
+[[rules]]
+id = "securebank-hardcoded-password"
+description = "Password hardcodeado en el código fuente"
+regex = '''(?i)(password|passwd|pwd|db_pass)\s*[:=]\s*["'][^"'\s]{6,}["']'''
+tags = ["password", "securebank"]
+
+  [rules.allowlist]
+  description = "Referencias a variables inyectadas y ejemplos documentados en docs/"
+  regexes = ['''\$\{''']
+  paths = ['''^docs/.*\.md$''']
+
+[allowlist]
+description = "Plantilla con valores de ejemplo (sin secretos reales)"
+paths = ['''(^|/)\.env\.example$''']
