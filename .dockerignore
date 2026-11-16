@@ -11,3 +11,7 @@ secrets.json
 tests/
 __pycache__/
 *.pyc
+docs/
+img/
+docker/
+.github/
