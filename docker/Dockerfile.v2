@@ -1,29 +1,24 @@
 # securebank:v2-secure - endurecido
-# 1. Base mínima y con tag versionado
-FROM python:3.11.9-slim-bookworm
+FROM python:3.11.17-slim-trixie
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
-# 2. Solo lo necesario, sin caché de apt
 RUN apt-get update && \
     apt-get install -y --no-install-recommends tini && \
     rm -rf /var/lib/apt/lists/*
 
-# 3. Usuario dedicado sin privilegios
 RUN adduser --disabled-password --gecos "" --uid 10001 appuser
 
 WORKDIR /app
 
-# 4. Dependencias primero (aprovecha caché) y sin caché de pip
 COPY --chown=appuser:appuser requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip uninstall -y setuptools
 
-# 5. Solo el código (el .dockerignore deja fuera .env, .git, tests)
 COPY --chown=appuser:appuser src ./src
 
 USER appuser
 
-# 6. Solo el puerto de la aplicación
 EXPOSE 8000
 
 ENTRYPOINT ["tini", "--"]
