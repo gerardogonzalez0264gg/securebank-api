@@ -19,4 +19,4 @@
 -**`capabilities: drop: ["ALL"]`:** Elimina todas las *capabilities* Linux innecesarias para reducir la superficie de ataque del contenedor
 -**`resources.requests` y `resources.limits` (`cpu` y `memory`):** Acota el consumo de recursos del *Pod* para evitar agotamiento de recursos en el nodo
 -**`secretKeyRef` en `DB_PASSWORD`:** Para no mostrar credenciales en texto dentro del manifiesto al leerlas desde el *Secret*
--**Imagen por *digest* (`sha256`) en lugar de `:latest`:** Garantiza trazabilidad y inmutabilidad sobre la versión exacta de la imagen desplegada
+-**Imagen por *digest* (`sha256`) en lugar de `:latest`:** Esto da mejor trazabilidad y inmutabilidad sobre la version de la imagen desplegada
