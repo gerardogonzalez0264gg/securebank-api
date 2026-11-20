@@ -7,3 +7,11 @@ credentials.json
 secrets.json
 __pycache__/
 *.pyc
+
+# Terraform: el estado puede contener secretos
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+tfplan
+crash.log

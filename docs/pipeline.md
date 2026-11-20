@@ -26,6 +26,31 @@ El archivo es `.github/workflows/ci.yml`. Se activa con cada push a `main` o `fe
 
 Tiene permisos mínimos (`contents: read`) y no guarda secretos en el archivo.
 
+## Pipeline IaC Security (Sesión 11)
+
+La infraestructura también es código, así que tiene su propio pipeline con una compuerta de seguridad antes de desplegar.
+
+```text
+Commit -> IaC Scan -> Gate -> Plan -> Apply
+```
+
+| Etapa | Qué hace | Herramienta / regla |
+|---|---|---|
+| Commit | Push a la rama de feature y Pull Request | Revisión por pares |
+| IaC Scan | Analiza los `.tf` antes de desplegar | `checkov -d ./terraform` |
+| Gate | Detiene el pipeline si hay hallazgos graves | Falla con CRITICAL o HIGH; el PR queda bloqueado |
+| Plan | Calcula los cambios | `terraform plan` |
+| Apply | Despliega a la nube | `terraform apply`; en producción, con aprobación manual |
+
+- Complemento opcional: `trivy config ./terraform`.
+- Archivo: `.github/workflows/iac.yml`. Se activa al cambiar `infra/**`. `plan` y `apply` solo corren si el repositorio define `AWS_ROLE_ARN` y las demás variables descritas en `infra/README.md`.
+- Checkov OSS no asigna severidad, así que el gate falla ante cualquier hallazgo. Lo que se omite queda documentado con su motivo en `infra/README.md`.
+- Reporte actual: `docs/iac-report/checkov-after.json` (279 aprobados, 0 fallidos, 13 omitidos).
+- Criterios de aceptación: un commit con violación CRITICAL bloquea el pipeline, Security Score final de 85 % o más, cero hallazgos CRITICAL o HIGH abiertos, y reportes Checkov before/after en JSON.
+- Security Score = (checks aprobados / checks totales) × 100.
+
+Esto cubre en la infraestructura el riesgo A08 (pipeline sin verificación): ningún cambio llega a `apply` sin pasar el escaneo y la revisión.
+
 ## Tres formas de automatizar
 
 | Práctica | Hasta dónde llega solo | ¿Aprueba una persona? |
@@ -64,7 +89,8 @@ SecureBank es un banco, así que lo correcto sería entrega continua, con aproba
 - Usar permisos mínimos.
 - Usar solo acciones confiables y con versión fija.
 - Mantener el pipeline versionado y revisado por PR.
+- Los cambios de infraestructura pasan por PR y por el gate de IaC antes de `apply`.
 
 ## Estado actual
 
-El pipeline CI v1.0 funciona. Falta la etapa de Security Test (clase 5) y el despliegue.
+El pipeline CI v1.0 funciona. Falta la etapa de Security Test (clase 5) y el despliegue. La etapa IaC Security ya tiene su workflow (`iac.yml`) y el módulo Terraform (`infra/terraform/`), validados con Checkov. Falta ejecutar `plan`/`apply` contra AWS y generar el reporte "before".
