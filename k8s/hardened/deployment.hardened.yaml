@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: securebank-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: securebank-api
+  template:
+    metadata:
+      labels:
+        app: securebank-api
+    spec:   
+      containers:  
+        - name: api 
+          image: securebank@sha256:9f2c000000000000000000000000000000000000000000000000000000000000
+          securityContext:
+            runAsNonRoot: true               
+            runAsUser: 10001                  
+            allowPrivilegeEscalation: false  
+            readOnlyRootFilesystem: true     
+            capabilities:   
+              drop:  
+                - ALL      
+          env:  
+            - name: DB_PASSWORD 
+              valueFrom:
+                secretKeyRef:
+                  name: db
+                  key: pass
+          resources:
+            requests:                    # ----requerimientos
+              cpu: "100m"                   
+              memory: "128Mi"
+            limits:                          
+              cpu: "500m"                    
+              memory: "256Mi"
