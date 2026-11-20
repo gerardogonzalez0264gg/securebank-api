@@ -1,0 +1,159 @@
+name: SecureBank IaC Security
+
+# Pipeline de infraestructura (Sesión 11): scan -> gate -> plan -> apply.
+# El scan es el gate: si Checkov encuentra un hallazgo, el job falla, el PR
+# queda bloqueado y plan/apply no se ejecutan.
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+    paths:
+      - 'infra/**'
+      - '.github/workflows/iac.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'infra/**'
+      - '.github/workflows/iac.yml'
+
+# Mínimo privilegio: solo lectura; plan/apply piden id-token a nivel de job.
+permissions:
+  contents: read
+
+env:
+  TF_DIR: infra/terraform
+  CHECKOV_VERSION: "3.4.6"
+  TERRAFORM_VERSION: "1.10.5"
+
+jobs:
+  iac-scan:
+    name: IaC Scan + Gate (Checkov)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar Checkov (versión fija)
+        run: pip install "checkov==${CHECKOV_VERSION}"
+
+      - name: Escanear IaC (falla si hay hallazgos)
+        run: |
+          checkov -d "$TF_DIR" --framework terraform --compact \
+            --output cli --output json \
+            --output-file-path console,checkov-report.json
+
+      - name: Guardar reporte Checkov
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-report-${{ github.sha }}
+          path: checkov-report.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  plan:
+    name: Terraform Plan
+    needs: iac-scan
+    # Solo corre si el repo tiene configurado el rol de AWS (vars.AWS_ROLE_ARN).
+    if: ${{ vars.AWS_ROLE_ARN != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+      TF_VAR_certificate_arn: ${{ vars.CERTIFICATE_ARN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Credenciales AWS (OIDC, sin claves estáticas)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=securebank/terraform.tfstate" \
+            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+
+      - name: Terraform plan
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Guardar plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ github.sha }}
+          path: ${{ env.TF_DIR }}/tfplan
+          retention-days: 1
+
+  apply:
+    name: Terraform Apply (aprobación manual)
+    needs: plan
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    # El environment "production" debe tener revisores requeridos (aprobación humana).
+    environment: production
+    concurrency:
+      group: terraform-apply
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+      TF_VAR_certificate_arn: ${{ vars.CERTIFICATE_ARN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Credenciales AWS (OIDC, sin claves estáticas)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Descargar plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ github.sha }}
+          path: ${{ env.TF_DIR }}
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=securebank/terraform.tfstate" \
+            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+
+      - name: Terraform apply
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform apply -input=false tfplan
