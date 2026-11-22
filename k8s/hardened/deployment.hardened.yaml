@@ -11,28 +11,45 @@ spec:
     metadata:
       labels:
         app: securebank-api
-    spec:   
-      containers:  
-        - name: api 
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: api
           image: securebank@sha256:9f2c000000000000000000000000000000000000000000000000000000000000
           securityContext:
-            runAsNonRoot: true               
-            runAsUser: 10001                  
-            allowPrivilegeEscalation: false  
-            readOnlyRootFilesystem: true     
-            capabilities:   
-              drop:  
-                - ALL      
-          env:  
-            - name: DB_PASSWORD 
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: db
                   key: pass
           resources:
-            requests:                    # ----requerimientos
-              cpu: "100m"                   
+            requests:
+              cpu: "100m"
               memory: "128Mi"
-            limits:                          
-              cpu: "500m"                    
+            limits:
+              cpu: "500m"
               memory: "256Mi"
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
