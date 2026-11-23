@@ -21,6 +21,18 @@ variable "certificate_arn" {
   type        = string
 }
 
+variable "github_repository" {
+  description = "Repositorio de GitHub autorizado a asumir el rol de CI por OIDC (owner/repo)"
+  type        = string
+  default     = "gerardogonzalez0264gg/securebank-api"
+}
+
+variable "github_oidc_provider_arn" {
+  description = "ARN del proveedor OIDC de GitHub si ya existe en la cuenta (null = crearlo)"
+  type        = string
+  default     = null
+}
+
 variable "instance_type" {
   description = "Tipo de instancia para ec2_web y ec2_worker"
   type        = string
@@ -28,9 +40,9 @@ variable "instance_type" {
 }
 
 variable "db_instance_class" {
-  description = "Clase de instancia de rds_postgres"
+  description = "Clase de instancia de rds_postgres (Performance Insights requiere db.t3.medium o superior)"
   type        = string
-  default     = "db.t3.micro"
+  default     = "db.t3.medium"
 }
 
 variable "db_username" {

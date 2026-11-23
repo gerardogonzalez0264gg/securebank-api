@@ -48,24 +48,55 @@ resource "aws_iam_instance_profile" "instance" {
 }
 
 # ---------------------------------------------------------------------------
-# iam_user_ci: usuario de CI, vía grupo (no policies directas al usuario).
-# Solo puede subir imágenes al repositorio ECR. No se crean access keys aquí.
+# iam_role_ci: el CI de GitHub asume este rol por OIDC (sin usuario IAM ni
+# access keys). Solo puede subir imágenes al repositorio ECR y solo desde la
+# rama main del repositorio indicado.
 # ---------------------------------------------------------------------------
-resource "aws_iam_user" "iam_user_ci" {
-  #checkov:skip=CKV_AWS_273:Usuario de CI exigido por el stack de la Sesion 11; sin access keys y con menor privilegio. Reemplazar por OIDC
-  name = "securebank-ci"
+resource "aws_iam_openid_connect_provider" "github" {
+  # Una cuenta solo admite un proveedor por URL: si ya existe, pasar su ARN en
+  # var.github_oidc_provider_arn y no se crea otro.
+  count           = var.github_oidc_provider_arn == null ? 1 : 0
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
 }
 
-resource "aws_iam_group" "ci" {
-  name = "securebank-ci"
+data "aws_iam_policy_document" "github_oidc_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [coalesce(var.github_oidc_provider_arn, one(aws_iam_openid_connect_provider.github[*].arn))]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${var.github_repository}:ref:refs/heads/main"]
+    }
+  }
 }
 
-resource "aws_iam_user_group_membership" "ci" {
-  user   = aws_iam_user.iam_user_ci.name
-  groups = [aws_iam_group.ci.name]
+resource "aws_iam_role" "iam_role_ci" {
+  name               = "securebank-ci-ecr"
+  assume_role_policy = data.aws_iam_policy_document.github_oidc_assume.json
 }
 
 data "aws_iam_policy_document" "ci_ecr_push" {
+  #checkov:skip=CKV_AWS_356:ecr:GetAuthorizationToken no admite restriccion por recurso; AWS exige Resource "*"
+  statement {
+    sid       = "LoginECR"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+
   statement {
     sid = "PushImagenes"
     actions = [
@@ -79,9 +110,9 @@ data "aws_iam_policy_document" "ci_ecr_push" {
   }
 }
 
-resource "aws_iam_group_policy" "ci_ecr_push" {
+resource "aws_iam_role_policy" "ci_ecr_push" {
   name   = "securebank-ci-ecr-push"
-  group  = aws_iam_group.ci.name
+  role   = aws_iam_role.iam_role_ci.id
   policy = data.aws_iam_policy_document.ci_ecr_push.json
 }
 

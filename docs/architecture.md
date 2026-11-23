@@ -168,9 +168,10 @@ Internet
    |                    sg_public: solo 443 desde Internet
    v
 ------------------------ VPC 10.0.0.0/16 (vpc_main) ------------------------
-[ec2_web / lambda_api]  Subred privada (subnet_priv)  - API REST (sg_app: solo desde el ALB)
+[ec2_web / lambda_api]  Subred privada (subnet_priv)  - API REST (sg_api: solo desde el ALB)
+[ec2_worker]            Subred privada (subnet_priv)  - procesos (sg_worker: sin entrada)
    |
-   | 5432, solo desde sg_app
+   | 5432, solo desde sg_api y sg_worker
    v
 [rds_postgres]          sg_db, publicly_accessible = false
 ```
@@ -179,17 +180,18 @@ Reglas de red:
 
 * Ningún Security Group abre `0.0.0.0/0` sobre puertos administrativos (SSH 22, RDP 3389).
 * No existe SSH: el acceso administrativo es por SSM Session Manager (rol `iam_role_admin`), sin puertos abiertos.
-* La base de datos no es accesible desde Internet; solo acepta tráfico de la API.
+* Un Security Group por rol (`sg_public`, `sg_api`, `sg_worker`, `sg_db`), con reglas por referencia entre grupos y no por rangos de IP.
+* La base de datos no es accesible desde Internet; solo acepta PostgreSQL desde la API y el worker.
 
 ### 5.2 Recursos del stack y control exigido
 
 | Capa | Recursos | Control exigido |
 | --- | --- | --- |
-| Red | `vpc_main`, `subnet_pub`, `subnet_priv`, `sg_public`, `sg_app`, `sg_db` | Sin `0.0.0.0/0` en puertos administrativos; solo 443 público vía ALB; API solo desde el ALB; BD solo desde la API |
+| Red | `vpc_main`, `subnet_pub`, `subnet_priv`, `sg_public`, `sg_api`, `sg_worker`, `sg_db` | Solo el ALB es público (443); reglas entre Security Groups según 5.1 |
 | Cómputo | `ec2_web`, `ec2_worker`, `lambda_api`, `ebs_volume` | Sin IP pública ni SSH; IMDSv2 obligatorio; volúmenes cifrados |
 | Datos | `rds_postgres`, `dynamodb_txn` | `storage_encrypted = true`, `publicly_accessible = false`, TLS obligatorio, clave gestionada por Secrets Manager |
 | Almacenamiento | `s3_backups`, `s3_logs` | Privados (`block_public_acls = true`) y cifrados con KMS (`sse_algorithm = "aws:kms"`) |
-| Identidad | `iam_role_admin`, `iam_user_ci` | Sin `Action: "*"` ni `Resource: "*"`; menor privilegio; CI solo puede subir imágenes a `ecr_repo` |
+| Identidad | `iam_role_admin`, `iam_role_ci` | Sin `Action: "*"` ni `Resource: "*"` (salvo `ecr:GetAuthorizationToken`, que AWS exige); el CI entra por OIDC, sin usuario IAM ni claves, solo desde `main` y solo para subir imágenes a `ecr_repo` |
 | Cifrado | `kms_key` | Clave usada para cifrar datos en reposo |
 | Trazabilidad | `cloudtrail`, `flow_logs` | Habilitados; CloudTrail multi-región con validación de integridad y envío a CloudWatch Logs; logs y query logging de RDS |
 | Otros | `alb_public`, `ecr_repo` | Pasan por el mismo escaneo Checkov |
@@ -198,11 +200,11 @@ Reglas de red:
 
 | OWASP | Problema detectado | Mejora en la arquitectura |
 | --- | --- | --- |
-| A01 Broken Access Control | Transferencias sin verificar rol | Roles IAM con menor privilegio (sin `Action: "*"` / `Resource: "*"`), por ejemplo solo `s3:GetObject` sobre el ARN del bucket. La verificación de rol dentro de la API sigue siendo responsabilidad del backend |
-| A02 Cryptographic Failures | Secretos en texto plano | Datos en reposo cifrados con `kms_key` (S3, RDS, EBS, DynamoDB, ECR), TLS obligatorio en RDS y contraseña de RDS en Secrets Manager (no está en el código). Los secretos de la aplicación quedan fuera de esta sesión |
-| A05 Security Misconfiguration | Contenedor como root · cloud abierto | Parte cloud: sin SSH, BD privada, buckets con acceso público bloqueado, segmentación pública/privada e IMDSv2 |
-| A08 Integrity Failures | Pipeline sin firma ni verificación | `iac.yml` con escaneo Checkov obligatorio como gate antes de `plan` y `apply`, cambios solo por PR, versiones fijas y aprobación manual en producción. La firma de artefactos queda pendiente |
-| A09 Logging & Monitoring | Ausencia total de trazabilidad | `cloudtrail` (multi-región, a CloudWatch), `flow_logs`, logs y query logging de RDS, `s3_logs` y access logs de `s3_backups` |
+| A01 Broken Access Control | Transferencias sin verificar rol | IAM con menor privilegio y Security Groups separados por rol (5.1 y 5.2). La verificación de rol dentro de la API sigue siendo responsabilidad del backend |
+| A02 Cryptographic Failures | Secretos en texto plano | Cifrado en reposo con `kms_key`, TLS obligatorio en RDS y contraseña de RDS en Secrets Manager (no está en el código). Los secretos de la aplicación quedan fuera de esta sesión |
+| A05 Security Misconfiguration | Contenedor como root · cloud abierto | Parte cloud: red segmentada, BD privada, buckets privados, sin SSH e IMDSv2 (5.1 y 5.2) |
+| A08 Integrity Failures | Pipeline sin firma ni verificación | `iac.yml`: Checkov y `terraform validate` como gate antes de `plan` y `apply`, versiones fijas, CI por OIDC y aprobación manual en producción (detalle en `docs/pipeline.md`). La firma de artefactos queda pendiente |
+| A09 Logging & Monitoring | Ausencia total de trazabilidad | `cloudtrail` (multi-región, a CloudWatch), `flow_logs`, logs y query logging de RDS y `s3_logs` |
 
 ---
 
@@ -230,7 +232,7 @@ La API accede a información privada almacenada en la base de datos.
 
 Los recursos internos deben estar protegidos frente a accesos externos no autorizados.
 
-Esta frontera se materializa con la VPC, la separación `subnet_pub` / `subnet_priv` y los Security Groups: solo el ALB es público (443) y ninguna regla abre puertos administrativos a `0.0.0.0/0`.
+Esta frontera se materializa con la VPC, las subredes y los Security Groups descritos en la sección 5.1.
 
 En cada frontera de confianza se deben aplicar controles de validación, autenticación y autorización.
 
@@ -271,11 +273,7 @@ La arquitectura debe considerar los siguientes controles:
 * Configuración segura de contenedores.
 * Análisis de dependencias.
 * Controles de seguridad integrados al pipeline DevSecOps.
-* Infraestructura como código revisada por PR y escaneada (Checkov) antes de desplegar.
-* Cifrado en reposo de volúmenes, buckets y base de datos.
-* Menor privilegio en IAM.
-* Logs de infraestructura habilitados (CloudTrail, VPC flow logs).
-* Security Score de IaC igual o superior a 85 %.
+* Infraestructura como código con los controles de la sección 5.
 
 ---
 

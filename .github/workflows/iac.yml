@@ -59,9 +59,33 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Formato (terraform fmt)
+        run: terraform fmt -check -recursive
+        working-directory: ${{ env.TF_DIR }}
+
+      - name: Terraform init (sin backend ni credenciales)
+        run: terraform init -backend=false -input=false
+        working-directory: ${{ env.TF_DIR }}
+
+      - name: Terraform validate
+        run: terraform validate
+        working-directory: ${{ env.TF_DIR }}
+
   plan:
     name: Terraform Plan
-    needs: iac-scan
+    needs: [iac-scan, terraform-validate]
     # Solo corre si el repo tiene configurado el rol de AWS (vars.AWS_ROLE_ARN).
     if: ${{ vars.AWS_ROLE_ARN != '' }}
     runs-on: ubuntu-latest

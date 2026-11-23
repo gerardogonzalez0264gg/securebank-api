@@ -7,7 +7,7 @@ resource "aws_instance" "ec2_web" {
   ami                         = data.aws_ssm_parameter.al2023.value
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.subnet_priv[0].id
-  vpc_security_group_ids      = [aws_security_group.sg_app.id]
+  vpc_security_group_ids      = [aws_security_group.sg_api.id]
   iam_instance_profile        = aws_iam_instance_profile.instance.name
   associate_public_ip_address = false
   monitoring                  = true
@@ -33,7 +33,7 @@ resource "aws_instance" "ec2_worker" {
   ami                         = data.aws_ssm_parameter.al2023.value
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.subnet_priv[1].id
-  vpc_security_group_ids      = [aws_security_group.sg_app.id]
+  vpc_security_group_ids      = [aws_security_group.sg_worker.id]
   iam_instance_profile        = aws_iam_instance_profile.instance.name
   associate_public_ip_address = false
   monitoring                  = true
@@ -104,6 +104,6 @@ resource "aws_lambda_function" "lambda_api" {
 
   vpc_config {
     subnet_ids         = aws_subnet.subnet_priv[*].id
-    security_group_ids = [aws_security_group.sg_app.id]
+    security_group_ids = [aws_security_group.sg_api.id]
   }
 }

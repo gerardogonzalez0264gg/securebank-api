@@ -2,6 +2,7 @@
 # s3_logs: destino de CloudTrail y VPC Flow Logs (privado, cifrado, versionado)
 # ---------------------------------------------------------------------------
 resource "aws_s3_bucket" "s3_logs" {
+  #checkov:skip=CKV_AWS_18:Los access logs de S3 requieren un bucket destino con SSE-S3, no con SSE-KMS; pendiente bucket dedicado
   #checkov:skip=CKV_AWS_144:Replicacion cross-region (MEDIUM) pendiente: requiere segundo provider y costo adicional
   #checkov:skip=CKV2_AWS_62:Sin consumidor de eventos definido en el esqueleto (MEDIUM)
   bucket_prefix = "securebank-logs-"
@@ -122,9 +123,10 @@ resource "aws_s3_bucket_policy" "s3_logs" {
 }
 
 # ---------------------------------------------------------------------------
-# s3_backups: respaldos (privado, cifrado con KMS, versionado, con access logs)
+# s3_backups: respaldos (privado, cifrado con KMS, versionado)
 # ---------------------------------------------------------------------------
 resource "aws_s3_bucket" "s3_backups" {
+  #checkov:skip=CKV_AWS_18:Los access logs de S3 requieren un bucket destino con SSE-S3, no con SSE-KMS; pendiente bucket dedicado
   #checkov:skip=CKV_AWS_144:Replicacion cross-region (MEDIUM) pendiente: requiere segundo provider y costo adicional
   #checkov:skip=CKV2_AWS_62:Sin consumidor de eventos definido en el esqueleto (MEDIUM)
   bucket_prefix = "securebank-backups-"
@@ -153,12 +155,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "s3_backups" {
       kms_master_key_id = aws_kms_key.kms_key.arn
     }
   }
-}
-
-resource "aws_s3_bucket_logging" "s3_backups" {
-  bucket        = aws_s3_bucket.s3_backups.id
-  target_bucket = aws_s3_bucket.s3_logs.id
-  target_prefix = "s3-backups/"
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "s3_backups" {
