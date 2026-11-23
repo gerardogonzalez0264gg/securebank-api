@@ -15,7 +15,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: api
-          image: securebank@sha256:9f2c000000000000000000000000000000000000000000000000000000000000
+          image: securebank@sha256:9f2c000000000000000000000000000000000000000000000000000000000000 # este es un digest de ejemplo
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
