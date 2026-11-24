@@ -26,6 +26,29 @@ El archivo es `.github/workflows/ci.yml`. Se activa con cada push a `main` o `fe
 
 Tiene permisos mínimos (`contents: read`) y no guarda secretos en el archivo.
 
+## Pipeline IaC Security (Sesión 11)
+
+La infraestructura también es código, así que tiene su propio pipeline con una compuerta de seguridad antes de desplegar.
+
+```text
+Commit -> IaC Scan + Validate (gate) -> Plan -> Apply
+```
+
+| Etapa | Qué hace | Herramienta / regla |
+|---|---|---|
+| Commit | Push a la rama de feature y Pull Request | Revisión por pares |
+| IaC Scan | Analiza los `.tf` antes de desplegar | `checkov -d infra/terraform` |
+| Validate | Comprueba formato y sintaxis, sin credenciales | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate` |
+| Gate | Detiene el pipeline si falla el scan o el validate | Cualquier hallazgo bloquea el PR; `plan` y `apply` no corren |
+| Plan | Calcula los cambios | `terraform plan` |
+| Apply | Despliega a la nube | `terraform apply`; en producción, con aprobación manual |
+
+- Complemento opcional: `trivy config ./terraform`.
+- Archivo: `.github/workflows/iac.yml`. Se activa al cambiar `infra/**`. `plan` y `apply` solo corren si el repositorio define `AWS_ROLE_ARN` y las demás variables descritas en `infra/README.md`.
+- Checkov OSS no asigna severidad, así que el gate falla ante cualquier hallazgo. Resultados, checks omitidos y motivos: `infra/README.md` y `docs/iac-report/checkov-after.json`.
+- Criterios de aceptación: un commit con violación CRITICAL bloquea el pipeline, Security Score final de 85 % o más, cero hallazgos CRITICAL o HIGH abiertos, y reportes Checkov before/after en JSON.
+- Security Score = (checks aprobados / checks totales) × 100.
+
 ## Tres formas de automatizar
 
 | Práctica | Hasta dónde llega solo | ¿Aprueba una persona? |
@@ -67,13 +90,10 @@ SecureBank es un banco, así que lo correcto sería entrega continua, con aproba
 
 ## Estado actual
 
-El pipeline CI v1.0 funciona. Falta la etapa de Security Test (clase 5) y el despliegue.
 
-## Etapa DAST (Sesión 8)
-
-El job `dast` de `ci.yml` corre después de `build`: ejecuta los tests de seguridad (`tests/security`), levanta SecureBank en un contenedor efímero (`docker-compose.dast.yml`), lanza **OWASP ZAP Baseline** contra `http://localhost:8080` y sube `report.html`, `report.json` y `report.md` como artefacto por 14 días. Usa `-I`, así que no rompe el build por advertencias: los umbrales de pass/fail llegan con los Quality Gates (Sesión 9). Detalle y entregable en `docs/sesion-08-dast/`.
-
-## Etapa Security Gate (Sesión 9)
-
-Los jobs `sast` (Semgrep), `sca` (Trivy) y `coverage` (pytest-cov) se suman a `secret-scan` y `dast`. El job `gate` descarga sus reportes, los consolida en `findings.json` y evalúa `policy/security-policy-v1.rego` con OPA. Si la política devuelve `BLOCK`, el job termina con `exit 1` y el PR no puede unirse; si un scanner no reporta, también bloquea (falla cerrada). La evidencia queda en el artefacto `gate-evidence-<sha>` por 90 días. Detalle en `docs/sesion-09-quality-gates/` y `policy/README.md`.
+    $param = $args[0]
+    $head = $param.Groups[1].Value
+    $incoming = $param.Groups[2].Value
+    # Combinar: secci�n de main (IaC) + secciones de sesion-08 y sesion-09
+    $head + "`r`n`r`n> **Nota:** La etapa IaC Security ya tiene su workflow ``iac.yml`` y el m�dulo Terraform (``infra/terraform/``), con Checkov y ``terraform validate`` en el CI."
 

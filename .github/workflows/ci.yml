@@ -108,7 +108,7 @@ jobs:
 
       - name: Levantar SecureBank (contenedor efímero)
         run: |
-          docker compose -f docker-compose.dast.yml up -d --build --wait --wait-timeout 120
+          docker compose -f docker-compose.dast.yml up -d --build --wait --wait-timeout 300
           curl -sf http://localhost:8080/health
 
       - name: ZAP Baseline Scan
