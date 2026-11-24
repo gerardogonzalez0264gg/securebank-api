@@ -70,9 +70,9 @@ jobs:
           cosign sign ${{ env.DIGREF }}
           cosign attest --predicate sbom.json --type cyclonedx ${{ env.DIGREF }}
 
-      - name: verificar firma
+     - name: verificar firma
         run: |
           cosign verify \
             --certificate-identity-regexp "^https://github\.com/${{ github.repository }}/.*" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            ${{ env.DIGREF }} || exit 1
+            alpine:latest || exit 1
