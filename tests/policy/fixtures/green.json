@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "commit": "green0001",
+    "branch": "feature/ok",
+    "build": "1"
+  },
+  "context": {
+    "business_criticality": "critical",
+    "exposure_level": "internet",
+    "mitigations": []
+  },
+  "secrets": {
+    "count": 0
+  },
+  "sast": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  },
+  "sca": {
+    "critical": 0,
+    "high": 1,
+    "medium": 3,
+    "low": 4
+  },
+  "dast": {
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 3
+  },
+  "coverage": {
+    "percent": 85.0
+  },
+  "kev": []
+}

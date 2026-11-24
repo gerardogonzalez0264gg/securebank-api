@@ -76,3 +76,202 @@ jobs:
           name: dist-${{ github.sha }}
           path: dist/
           retention-days: 7
+
+  dast:
+    name: DAST (OWASP ZAP Baseline)
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      ZAP_IMAGE: zaproxy/zap-stable:2.16.1   # versión fija (R.06)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Tests de seguridad (BOLA y headers)
+        run: |
+          pip install -r requirements.txt
+          python -m pytest tests/security -q
+
+      - name: Generar secretos efímeros del entorno de test
+        run: |
+          for var in JWT_SECRET SEED_ALICE_PW SEED_BOB_PW; do
+            value="$(openssl rand -hex 24)"
+            echo "::add-mask::${value}"
+            echo "${var}=${value}" >> "$GITHUB_ENV"
+          done
+
+      - name: Levantar SecureBank (contenedor efímero)
+        run: |
+          docker compose -f docker-compose.dast.yml up -d --build --wait --wait-timeout 120
+          curl -sf http://localhost:8080/health
+
+      - name: ZAP Baseline Scan
+        run: |
+          mkdir -p zap-out && chmod 777 zap-out
+          docker run --rm --network=host -v "$PWD/zap-out:/zap/wrk/:rw" \
+            "$ZAP_IMAGE" zap-baseline.py \
+            -t http://localhost:8080 \
+            -r report.html -J report.json -w report.md -I
+
+      - name: Guardar reportes DAST
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-report-${{ github.sha }}
+          path: zap-out/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Destruir entorno de test
+        if: always()
+        run: docker compose -f docker-compose.dast.yml down -v
+
+  sast:
+    name: SAST (Semgrep)
+    needs: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: "Semgrep (no falla por hallazgos: decide el gate)"
+        run: |
+          pip install semgrep==1.180.0
+          semgrep scan --config p/default --metrics=off --sarif --output sast.sarif src
+
+      - name: Guardar reporte
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-report
+          path: sast.sarif
+          if-no-files-found: warn
+
+  sca:
+    name: SCA (Trivy)
+    needs: secret-scan
+    runs-on: ubuntu-latest
+    env:
+      TRIVY_VERSION: "0.69.3"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Trivy (checksum verificado)
+        run: |
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          file="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl -sSfL "${base}/${file}" -o "${file}"
+          curl -sSfL "${base}/trivy_${TRIVY_VERSION}_checksums.txt" -o checksums.txt
+          grep " ${file}$" checksums.txt | sha256sum -c -
+          tar -xzf "${file}" trivy
+          sudo mv trivy /usr/local/bin/trivy
+          trivy --version
+
+      - name: "Escanear dependencias (no falla por hallazgos: decide el gate)"
+        run: trivy fs --scanners vuln --format json --output sca.json .
+
+      - name: Guardar reporte
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca-report
+          path: sca.json
+          if-no-files-found: warn
+
+  coverage:
+    name: Cobertura de tests
+    needs: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Tests unitarios, de seguridad y del consolidador
+        run: |
+          pip install -r requirements.txt
+          python -m pytest tests --cov=src --cov-report=json:coverage.json --cov-report=term
+
+      - name: Guardar reporte
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.json
+          if-no-files-found: warn
+
+  gate:
+    name: Security Gate (OPA)
+    # always(): el gate debe decidir aunque un scanner haya fallado (falla cerrada)
+    if: ${{ always() }}
+    needs: [secret-scan, sast, sca, coverage, dast]
+    runs-on: ubuntu-latest
+    env:
+      OPA_VERSION: "1.9.0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Descargar reportes de los scanners
+        uses: actions/download-artifact@v4
+        with:
+          path: reports
+
+      - name: Catálogo CISA KEV (exploitability real)
+        run: |
+          curl -sSfL --retry 3 \
+            "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json" \
+            -o kev.json
+
+      - name: Instalar OPA (checksum verificado)
+        run: |
+          base="https://github.com/open-policy-agent/opa/releases/download/v${OPA_VERSION}"
+          curl -sSfL "${base}/opa_linux_amd64_static" -o opa
+          curl -sSfL "${base}/opa_linux_amd64_static.sha256" -o opa.sha256
+          echo "$(cut -d' ' -f1 opa.sha256)  opa" | sha256sum -c -
+          chmod +x opa && sudo mv opa /usr/local/bin/opa
+          opa version
+
+      - name: Consolidar hallazgos en findings.json
+        run: |
+          python scripts/consolidate_findings.py \
+            --gitleaks reports/gitleaks-report/gitleaks.sarif \
+            --sast reports/sast-report/sast.sarif \
+            --sca reports/sca-report/sca.json \
+            --dast reports/dast-report-${{ github.sha }}/report.json \
+            --coverage reports/coverage-report/coverage.json \
+            --context config/security-context.json \
+            --kev kev.json \
+            --commit "${{ github.sha }}" --branch "${{ github.ref_name }}" \
+            --build "${{ github.run_number }}" \
+            -o findings.json
+
+      - name: Evaluar política (BLOCK -> exit 1)
+        run: scripts/gate.sh findings.json gate-result.json
+
+      - name: Guardar evidencia del gate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-evidence-${{ github.sha }}
+          path: |
+            findings.json
+            gate-result.json
+          retention-days: 90

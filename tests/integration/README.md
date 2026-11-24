@@ -14,3 +14,7 @@ Verificar que los diferentes componentes y módulos del sistema funcionen correc
 - Flujo de cuentas.
 - Flujo de transferencias.
 - Manejo de errores entre componentes.
+
+## Pruebas de política
+
+Las pruebas de la política Rego viven junto a ella (`policy/security-policy-v1_test.rego`, `opa test policy/`). Las entradas de ejemplo «verde», «rojo» y «debate #482» están en `tests/policy/fixtures/`.

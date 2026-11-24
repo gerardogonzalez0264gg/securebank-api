@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "commit": "482",
+    "branch": "release/1.3.0",
+    "build": "482"
+  },
+  "context": {
+    "business_criticality": "critical",
+    "exposure_level": "internet",
+    "mitigations": []
+  },
+  "secrets": {
+    "count": 0
+  },
+  "sast": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  },
+  "sca": {
+    "critical": 0,
+    "high": 3,
+    "medium": 12,
+    "low": 0
+  },
+  "dast": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  },
+  "coverage": {
+    "percent": 85.0
+  },
+  "kev": []
+}
