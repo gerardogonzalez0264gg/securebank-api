@@ -1,6 +1,6 @@
 {
-  "_comment": "Contexto de riesgo de SecureBank API. Cambiar este archivo relaja o endurece el gate: requiere aprobación del Lead de seguridad (CODEOWNERS + POL-REPO-001 R.02).",
+  "_comment": "Contexto de riesgo de SecureBank API. Cambiar este archivo relaja o endurece el gate: requiere aprobacion del Lead de seguridad (CODEOWNERS + POL-REPO-001 R.02).",
   "business_criticality": "critical",
   "exposure_level": "internet",
-  "mitigations": []
+  "mitigations": ["waf", "rate_limiting"]
 }

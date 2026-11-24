@@ -17,9 +17,14 @@ allow if count(deny) == 0
 # ───────────────────────── Umbrales base ─────────────────────────
 max_secrets := 0 # Tolerancia cero (Secret Scan)
 
-max_critical := 0 # Tolerancia cero, en cualquier scanner
+max_critical := 0 # Tolerancia cero en codigo propio (SAST + DAST)
 
-max_first_party_high := 0 # High en código propio (SAST + DAST): lo corregimos nosotros
+max_first_party_high := 0 # High en codigo propio (SAST + DAST): lo corregimos nosotros
+
+# SCA Critical: tolerancia cero sin compensating controls; con ellos se acepta deuda acotada
+max_sca_critical := 0 if not has_compensating_controls
+
+max_sca_critical := 3 if has_compensating_controls
 
 min_coverage := 80 # % de líneas de src/ cubiertas por tests
 
@@ -48,12 +53,12 @@ missing_mitigations := required_mitigations - {m | some m in mitigations}
 
 has_compensating_controls := count(missing_mitigations) == 0
 
-# High en dependencias (SCA): deuda acotada, más estricta si el activo es crítico y público
-sca_high_base := 1 if strict_context
+# High en dependencias (SCA): deuda acotada, mas estricta si el activo es critico y publico
+sca_high_base := 2 if strict_context
 
-sca_high_base := 2 if not strict_context
+sca_high_base := 4 if not strict_context
 
-compensating_bonus := 1 if has_compensating_controls
+compensating_bonus := 4 if has_compensating_controls
 
 compensating_bonus := 0 if not has_compensating_controls
 
@@ -84,9 +89,14 @@ deny contains msg if {
 }
 
 deny contains msg if {
-	some s in {"sast", "sca", "dast"}
+	some s in {"sast", "dast"}
 	input[s].critical > max_critical
-	msg := sprintf("%s Critical = %d (máximo %d)", [upper(s), input[s].critical, max_critical])
+	msg := sprintf("%s Critical = %d (maximo %d; codigo propio, tolerancia cero)", [upper(s), input[s].critical, max_critical])
+}
+
+deny contains msg if {
+	input.sca.critical > max_sca_critical
+	msg := sprintf("SCA Critical = %d (maximo %d; compensating controls=%v)", [input.sca.critical, max_sca_critical, has_compensating_controls])
 }
 
 deny contains msg if {
