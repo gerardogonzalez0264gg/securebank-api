@@ -70,7 +70,7 @@ jobs:
           cosign sign ${{ env.DIGREF }}
           cosign attest --predicate sbom.json --type cyclonedx ${{ env.DIGREF }}
 
-     - name: verificar firma
+      - name: verificar firma
         run: |
           cosign verify \
             --certificate-identity-regexp "^https://github\.com/${{ github.repository }}/.*" \
