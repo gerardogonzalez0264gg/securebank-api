@@ -8,6 +8,8 @@ El sistema está compuesto por un frontend web, una API REST, un servicio de aut
 
 La arquitectura permite separar las responsabilidades de presentación, procesamiento de solicitudes, autenticación y almacenamiento de información.
 
+Todos los componentes se despliegan sobre infraestructura cloud definida como código (IaC, Terraform), versionada en Git, revisada por Pull Request y escaneada antes de desplegarse (ver sección 5 y `docs/pipeline.md`).
+
 ---
 
 ## 2. Componentes principales
@@ -151,7 +153,62 @@ Gestiona el historial e información relacionada con las operaciones realizadas.
 
 ---
 
-## 5. Límites de confianza
+## 5. Infraestructura cloud (IaC)
+
+La infraestructura se declara en archivos Terraform (`infra/terraform/`, ver `infra/README.md`) y se trata igual que la aplicación: versionada, revisada por Pull Request y escaneada con Checkov antes de `terraform apply`. Así la infraestructura vulnerable nunca llega a existir (Shift-Left).
+
+### 5.1 Segmentación de red
+
+```text
+Internet
+   |
+   | HTTPS 443
+   v
+[alb_public]            Subred pública (subnet_pub)
+   |                    sg_public: solo 443 desde Internet
+   v
+------------------------ VPC 10.0.0.0/16 (vpc_main) ------------------------
+[ec2_web / lambda_api]  Subred privada (subnet_priv)  - API REST (sg_api: solo desde el ALB)
+[ec2_worker]            Subred privada (subnet_priv)  - procesos (sg_worker: sin entrada)
+   |
+   | 5432, solo desde sg_api y sg_worker
+   v
+[rds_postgres]          sg_db, publicly_accessible = false
+```
+
+Reglas de red:
+
+* Ningún Security Group abre `0.0.0.0/0` sobre puertos administrativos (SSH 22, RDP 3389).
+* No existe SSH: el acceso administrativo es por SSM Session Manager (rol `iam_role_admin`), sin puertos abiertos.
+* Un Security Group por rol (`sg_public`, `sg_api`, `sg_worker`, `sg_db`), con reglas por referencia entre grupos y no por rangos de IP.
+* La base de datos no es accesible desde Internet; solo acepta PostgreSQL desde la API y el worker.
+
+### 5.2 Recursos del stack y control exigido
+
+| Capa | Recursos | Control exigido |
+| --- | --- | --- |
+| Red | `vpc_main`, `subnet_pub`, `subnet_priv`, `sg_public`, `sg_api`, `sg_worker`, `sg_db` | Solo el ALB es público (443); reglas entre Security Groups según 5.1 |
+| Cómputo | `ec2_web`, `ec2_worker`, `lambda_api`, `ebs_volume` | Sin IP pública ni SSH; IMDSv2 obligatorio; volúmenes cifrados |
+| Datos | `rds_postgres`, `dynamodb_txn` | `storage_encrypted = true`, `publicly_accessible = false`, TLS obligatorio, clave gestionada por Secrets Manager |
+| Almacenamiento | `s3_backups`, `s3_logs` | Privados (`block_public_acls = true`) y cifrados con KMS (`sse_algorithm = "aws:kms"`) |
+| Identidad | `iam_role_admin`, `iam_role_ci` | Sin `Action: "*"` ni `Resource: "*"` (salvo `ecr:GetAuthorizationToken`, que AWS exige); el CI entra por OIDC, sin usuario IAM ni claves, solo desde `main` y solo para subir imágenes a `ecr_repo` |
+| Cifrado | `kms_key` | Clave usada para cifrar datos en reposo |
+| Trazabilidad | `cloudtrail`, `flow_logs` | Habilitados; CloudTrail multi-región con validación de integridad y envío a CloudWatch Logs; logs y query logging de RDS |
+| Otros | `alb_public`, `ecr_repo` | Pasan por el mismo escaneo Checkov |
+
+### 5.3 Riesgos OWASP abordados con IaC (Sesión 11)
+
+| OWASP | Problema detectado | Mejora en la arquitectura |
+| --- | --- | --- |
+| A01 Broken Access Control | Transferencias sin verificar rol | IAM con menor privilegio y Security Groups separados por rol (5.1 y 5.2). La verificación de rol dentro de la API sigue siendo responsabilidad del backend |
+| A02 Cryptographic Failures | Secretos en texto plano | Cifrado en reposo con `kms_key`, TLS obligatorio en RDS y contraseña de RDS en Secrets Manager (no está en el código). Los secretos de la aplicación quedan fuera de esta sesión |
+| A05 Security Misconfiguration | Contenedor como root · cloud abierto | Parte cloud: red segmentada, BD privada, buckets privados, sin SSH e IMDSv2 (5.1 y 5.2) |
+| A08 Integrity Failures | Pipeline sin firma ni verificación | `iac.yml`: Checkov y `terraform validate` como gate antes de `plan` y `apply`, versiones fijas, CI por OIDC y aprobación manual en producción (detalle en `docs/pipeline.md`). La firma de artefactos queda pendiente |
+| A09 Logging & Monitoring | Ausencia total de trazabilidad | `cloudtrail` (multi-región, a CloudWatch), `flow_logs`, logs y query logging de RDS y `s3_logs` |
+
+---
+
+## 6. Límites de confianza
 
 La arquitectura contiene diferentes fronteras de confianza.
 
@@ -175,11 +232,13 @@ La API accede a información privada almacenada en la base de datos.
 
 Los recursos internos deben estar protegidos frente a accesos externos no autorizados.
 
+Esta frontera se materializa con la VPC, las subredes y los Security Groups descritos en la sección 5.1.
+
 En cada frontera de confianza se deben aplicar controles de validación, autenticación y autorización.
 
 ---
 
-## 6. Superficie de ataque
+## 7. Superficie de ataque
 
 Los principales puntos de exposición de la arquitectura son:
 
@@ -193,10 +252,13 @@ Los principales puntos de exposición de la arquitectura son:
 * Variables de entorno.
 * Secretos.
 * Solicitudes HTTP/HTTPS.
+* Security Groups y reglas de red.
+* Buckets S3 (backups y logs).
+* Roles y usuarios IAM.
 
 ---
 
-## 7. Consideraciones de seguridad
+## 8. Consideraciones de seguridad
 
 La arquitectura debe considerar los siguientes controles:
 
@@ -211,10 +273,11 @@ La arquitectura debe considerar los siguientes controles:
 * Configuración segura de contenedores.
 * Análisis de dependencias.
 * Controles de seguridad integrados al pipeline DevSecOps.
+* Infraestructura como código con los controles de la sección 5.
 
 ---
 
-## 8. Relación con el Threat Model
+## 9. Relación con el Threat Model
 
 La arquitectura sirve como base para el Threat Model de SecureBank.
 
@@ -230,8 +293,8 @@ docs/threat-model.md
 
 ---
 
-## 9. Resumen
+## 10. Resumen
 
-La arquitectura de SecureBank separa el frontend, la API REST, el servicio de autenticación y la base de datos.
+La arquitectura de SecureBank separa el frontend, la API REST, el servicio de autenticación y la base de datos, desplegados sobre una VPC con subred pública y privada definida como código.
 
 Esta separación permite identificar los flujos de información, las fronteras de confianza y los principales puntos de ataque que deben ser considerados durante el ciclo DevSecOps.

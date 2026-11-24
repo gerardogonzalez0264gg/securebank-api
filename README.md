@@ -15,6 +15,7 @@ CI/CD.
 El proyecto se divide en:
 
 - src: código fuente
+- infra: infraestructura como código (Terraform) y escaneo con Checkov
 - tests: pruebas
 - docs: documentación y threat modeling
 - .github: automatización y reglas del repositorio
