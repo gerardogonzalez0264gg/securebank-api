@@ -12,7 +12,11 @@ command -v opa >/dev/null || { echo "opa no está instalado" >&2; exit 2; }
 command -v jq  >/dev/null || { echo "jq no está instalado" >&2; exit 2; }
 
 # Las pruebas de la política deben pasar antes de usarla para decidir
-opa test "$POLICY_DIR" >/dev/null || { echo "Las pruebas de la política fallan (opa test)" >&2; exit 2; }
+if ! TEST_OUT="$(opa test "$POLICY_DIR" 2>&1)"; then
+  echo "Las pruebas de la política fallan (opa test). Se actualizó la política sin actualizar sus tests:" >&2
+  echo "$TEST_OUT" >&2
+  exit 2
+fi
 
 opa eval -d "$POLICY_DIR/security-policy-v1.rego" -i "$FINDINGS" \
   --format json 'data.securepipeline.gate.result' \

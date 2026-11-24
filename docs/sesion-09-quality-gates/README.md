@@ -27,7 +27,7 @@ El job `gate` usa `if: always()`: corre aunque un scanner haya fallado, y en ese
 | Archivo | Para qué sirve |
 |---|---|
 | `policy/security-policy-v1.rego` | La política (Policy as Code) |
-| `policy/security-policy-v1_test.rego` | 18 pruebas con `opa test` |
+| `policy/security-policy-v1_test.rego` | 20 pruebas con `opa test` |
 | `policy/README.md` | Umbrales, justificación, criterios de riesgo (parte del entregable) |
 | `config/security-context.json` | Criticidad, exposición y compensating controls de SecureBank |
 | `scripts/consolidate_findings.py` | Une los reportes de los scanners en `findings.json` |
@@ -61,18 +61,17 @@ Resultado de evaluar el caso con esta política, variando solo el contexto (cada
 
 | Escenario | Decisión | Motivo |
 |---|---|---|
-| A. SecureBank hoy (Internet, crítico, sin controles) | **BLOCK** | SCA High 3 > 1 · Medium 12 > 10 |
-| B. A + WAF y rate limiting realmente desplegados | **BLOCK** | SCA High 3 > 2 · Medium 12 > 10 |
-| C. B + corregir 1 High | **BLOCK** | Medium 12 > 10 |
-| D. C + bajar Medium a 10 | **DEPLOY** | Cumple todo |
-| E. Servicio interno, sin Internet (3 High, 12 Medium) | **BLOCK** | SCA High 3 > 2 |
-| F. E + corregir 1 High | **DEPLOY** | Cumple todo |
+| A. Internet, crítico, sin controles | **BLOCK** | SCA High 3 > 2 · Medium 12 > 10 |
+| B. A + WAF y rate limiting realmente desplegados | **BLOCK** | Medium 12 > 10 |
+| C. B + bajar Medium a 10 | **DEPLOY** | Cumple todo |
+| D. Servicio interno, sin Internet (3 High, 12 Medium) | **DEPLOY** | High 3 <= 4 · Medium 12 <= 15 |
+| E. D con 16 Medium | **BLOCK** | Medium 16 > 15 |
 
-Lectura: la política no defiende ni «bloquear siempre» ni «desplegar por la fecha». Para un banco expuesto a Internet se acerca a la postura A, pero deja un camino medible y auditable hacia `DEPLOY` (corregir hallazgos y desplegar controles reales) en lugar de una excepción verbal. Es la respuesta a «la fecha de salida es mañana»: cambia el riesgo, no el umbral.
+Lectura: la política no defiende ni «bloquear siempre» ni «desplegar por la fecha». Para un banco expuesto a Internet sin controles se acerca a la postura A, pero deja un camino medible y auditable hacia `DEPLOY` (corregir hallazgos y desplegar controles reales) en lugar de una excepción verbal. Ojo: el escenario B solo vale si el WAF y el rate limiting existen; hoy no están desplegados (ver `policy/README.md`, «Decisiones a revisar»). Es la respuesta a «la fecha de salida es mañana»: cambia el riesgo, no el umbral.
 
 ## Limitaciones a tener presentes
 
-- **Los jobs `sast`, `sca` y `gate` no se ejecutaron en un runner real al prepararse esta sesión.** Las partes que sí se probaron localmente: la política (`opa test`: 18/18), el consolidador (`pytest`: 30/30), `gate.sh` con los casos verde/rojo y un recorrido de punta a punta usando el SARIF real de Semgrep de la Sesión 6 y la cobertura real medida. Valida el primer run del PR en GitHub Actions.
+- **Los jobs `sast`, `sca` y `gate` no se ejecutaron en un runner real al prepararse esta sesión.** Las partes que sí se probaron localmente: la política (`opa test`: 20/20), el consolidador (`pytest`: 30/30), `gate.sh` con los casos verde/rojo y un recorrido de punta a punta usando el SARIF real de Semgrep de la Sesión 6 y la cobertura real medida. Valida el primer run del PR en GitHub Actions.
 - **Configuración de Semgrep:** el job usa `p/default`. Si en la Sesión 6 usaste otro ruleset, ajústalo para que los resultados sean comparables.
 - **Mapeo de severidades:** Semgrep no entrega Critical/High/Medium nativos. Se usa `security-severity` si existe y, si no, el nivel SARIF (`error → High`, `warning → Medium`, `note → Low`). ZAP no tiene nivel Critical. Documenta esta convención si cambias de herramienta.
 - **KEV depende de cisa.gov:** si la descarga falla, el job `gate` falla (no se omite el criterio de exploitability en silencio).

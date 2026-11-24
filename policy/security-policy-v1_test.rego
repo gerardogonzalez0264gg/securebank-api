@@ -32,12 +32,21 @@ test_secreto_bloquea if {
 test_critical_en_sast_bloquea if {
 	i := object.union(clean, {"sast": {"critical": 1, "high": 0, "medium": 0, "low": 0}})
 	not gate.allow with input as i
-	"SAST Critical = 1 (máximo 0)" in gate.deny with input as i
+	"SAST Critical = 1 (maximo 0; codigo propio, tolerancia cero)" in gate.deny with input as i
 }
 
-test_critical_en_sca_bloquea if {
+test_critical_en_sca_bloquea_sin_compensating_controls if {
 	i := object.union(clean, {"sca": {"critical": 1, "high": 0, "medium": 0, "low": 0}})
-	"SCA Critical = 1 (máximo 0)" in gate.deny with input as i
+	not gate.allow with input as i
+	"SCA Critical = 1 (maximo 0; compensating controls=false)" in gate.deny with input as i
+}
+
+test_critical_en_sca_con_controles_tiene_tolerancia_de_3 if {
+	ctx := {"context": {"business_criticality": "critical", "exposure_level": "internet", "mitigations": ["waf", "rate_limiting"]}}
+	ok := object.union(object.union(clean, ctx), {"sca": {"critical": 3, "high": 0, "medium": 0, "low": 0}})
+	gate.allow with input as ok
+	bad := object.union(object.union(clean, ctx), {"sca": {"critical": 4, "high": 0, "medium": 0, "low": 0}})
+	"SCA Critical = 4 (maximo 3; compensating controls=true)" in gate.deny with input as bad
 }
 
 test_high_en_codigo_propio_bloquea if {
@@ -46,8 +55,13 @@ test_high_en_codigo_propio_bloquea if {
 }
 
 test_sca_high_sobre_limite_bloquea if {
-	i := object.union(clean, {"sca": {"critical": 0, "high": 2, "medium": 0, "low": 0}})
+	i := object.union(clean, {"sca": {"critical": 0, "high": 3, "medium": 0, "low": 0}})
 	not gate.allow with input as i
+}
+
+test_sca_high_en_el_limite_pasa if {
+	i := object.union(clean, {"sca": {"critical": 0, "high": 2, "medium": 0, "low": 0}})
+	gate.allow with input as i
 }
 
 test_medium_sobre_limite_bloquea if {
@@ -84,29 +98,31 @@ test_entrada_vacia_bloquea if {
 }
 
 # ── Criterios de riesgo ──
-test_contexto_estricto_limita_sca_high_a_1 if {
-	gate.max_sca_high == 1 with input as clean
+test_contexto_estricto_limita_sca_high_a_2 if {
+	gate.max_sca_high == 2 with input as clean
 }
 
-test_sin_exposicion_internet_relaja_a_2 if {
+test_sin_exposicion_internet_relaja_a_4 if {
 	i := object.union(clean, {"context": {"business_criticality": "critical", "exposure_level": "internal", "mitigations": []}})
-	gate.max_sca_high == 2 with input as i
+	gate.max_sca_high == 4 with input as i
 	gate.max_medium == 15 with input as i
 }
 
-test_compensating_controls_suman_un_high if {
+test_compensating_controls_suman_cuatro_high if {
 	i := object.union(clean, {"context": {"business_criticality": "critical", "exposure_level": "internet", "mitigations": ["waf", "rate_limiting"]}})
-	gate.max_sca_high == 2 with input as i
+	gate.max_sca_high == 6 with input as i
 }
 
 test_un_solo_control_no_alcanza if {
 	i := object.union(clean, {"context": {"business_criticality": "critical", "exposure_level": "internet", "mitigations": ["waf"]}})
-	gate.max_sca_high == 1 with input as i
+	gate.max_sca_high == 2 with input as i
+	gate.max_sca_critical == 0 with input as i
 }
 
 test_contexto_ausente_asume_el_mas_estricto if {
 	i := object.remove(clean, ["context"])
-	gate.max_sca_high == 1 with input as i
+	gate.max_sca_high == 2 with input as i
+	gate.max_sca_critical == 0 with input as i
 	gate.max_medium == 10 with input as i
 }
 
