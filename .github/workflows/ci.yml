@@ -76,3 +76,58 @@ jobs:
           name: dist-${{ github.sha }}
           path: dist/
           retention-days: 7
+
+  dast:
+    name: DAST (OWASP ZAP Baseline)
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      ZAP_IMAGE: zaproxy/zap-stable:2.16.1   # versión fija (R.06)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Tests de seguridad (BOLA y headers)
+        run: |
+          pip install -r requirements.txt
+          python -m pytest tests/security -q
+
+      - name: Generar secretos efímeros del entorno de test
+        run: |
+          for var in JWT_SECRET SEED_ALICE_PW SEED_BOB_PW; do
+            value="$(openssl rand -hex 24)"
+            echo "::add-mask::${value}"
+            echo "${var}=${value}" >> "$GITHUB_ENV"
+          done
+
+      - name: Levantar SecureBank (contenedor efímero)
+        run: |
+          docker compose -f docker-compose.dast.yml up -d --build --wait --wait-timeout 120
+          curl -sf http://localhost:8080/health
+
+      - name: ZAP Baseline Scan
+        run: |
+          mkdir -p zap-out && chmod 777 zap-out
+          docker run --rm --network=host -v "$PWD/zap-out:/zap/wrk/:rw" \
+            "$ZAP_IMAGE" zap-baseline.py \
+            -t http://localhost:8080 \
+            -r report.html -J report.json -w report.md -I
+
+      - name: Guardar reportes DAST
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-report-${{ github.sha }}
+          path: zap-out/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Destruir entorno de test
+        if: always()
+        run: docker compose -f docker-compose.dast.yml down -v

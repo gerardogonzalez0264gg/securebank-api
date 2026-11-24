@@ -68,3 +68,7 @@ SecureBank es un banco, así que lo correcto sería entrega continua, con aproba
 ## Estado actual
 
 El pipeline CI v1.0 funciona. Falta la etapa de Security Test (clase 5) y el despliegue.
+
+## Etapa DAST (Sesión 8)
+
+El job `dast` de `ci.yml` corre después de `build`: ejecuta los tests de seguridad (`tests/security`), levanta SecureBank en un contenedor efímero (`docker-compose.dast.yml`), lanza **OWASP ZAP Baseline** contra `http://localhost:8080` y sube `report.html`, `report.json` y `report.md` como artefacto por 14 días. Usa `-I`, así que no rompe el build por advertencias: los umbrales de pass/fail llegan con los Quality Gates (Sesión 9). Detalle y entregable en `docs/sesion-08-dast/`.

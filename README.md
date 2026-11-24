@@ -18,6 +18,7 @@ El proyecto se divide en:
 - tests: pruebas
 - docs: documentación y threat modeling
 - .github: automatización y reglas del repositorio
+- lab: entornos de laboratorio (DAST, Sesión 8)
 
 
 ## Configuración de repositorio
@@ -46,3 +47,7 @@ Este proyecto sigue un flujo de trabajo basado en ramas protegidas, con integrac
 ## § 2 · Roles y responsabilidades
 
 Los roles completos y la tabla de "quién puede qué" están en [POL-REPO-001.md](POL-REPO-001.md).
+
+## DAST (Sesión 8)
+
+Guía del laboratorio con OWASP ZAP, corrección de BOLA y entregable en [docs/sesion-08-dast/](docs/sesion-08-dast/README.md).
