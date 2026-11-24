@@ -90,4 +90,10 @@ SecureBank es un banco, asÃ­ que lo correcto serÃ­a entrega continua, con aproba
 
 ## Estado actual
 
-El pipeline CI v1.0 funciona. Falta la etapa de Security Test (clase 5) y el despliegue. La etapa IaC Security ya tiene su workflow (`iac.yml`) y el mÃ³dulo Terraform (`infra/terraform/`), con Checkov y `terraform validate` en el CI. Falta ejecutar `plan`/`apply` contra AWS y generar el reporte "before".
+
+    $param = $args[0]
+    $head = $param.Groups[1].Value
+    $incoming = $param.Groups[2].Value
+    # Combinar: sección de main (IaC) + secciones de sesion-08 y sesion-09
+    $head + "`r`n`r`n> **Nota:** La etapa IaC Security ya tiene su workflow ``iac.yml`` y el módulo Terraform (``infra/terraform/``), con Checkov y ``terraform validate`` en el CI."
+

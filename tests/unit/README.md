@@ -15,3 +15,8 @@ Las pruebas unitarias permiten comprobar componentes individuales del sistema de
 - Funciones relacionadas con transferencias.
 - Manejo de errores.
 - Controles de seguridad a nivel de componente.
+
+## Pruebas disponibles
+
+- `test_consolidate_findings.py` (Sesión 9): parsers de Gitleaks, Semgrep, Trivy, ZAP y coverage; falla cerrada ante reportes faltantes o corruptos.
+- `test_transfers_auth_views.py`: calc, export, auth, accounts y config.

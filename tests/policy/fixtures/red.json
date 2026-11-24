@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "commit": "red00002",
+    "branch": "feature/mal",
+    "build": "2"
+  },
+  "context": {
+    "business_criticality": "critical",
+    "exposure_level": "internet",
+    "mitigations": []
+  },
+  "secrets": {
+    "count": 1
+  },
+  "sast": {
+    "critical": 1,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  },
+  "sca": {
+    "critical": 0,
+    "high": 3,
+    "medium": 3,
+    "low": 4
+  },
+  "dast": {
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 3
+  },
+  "coverage": {
+    "percent": 62.5
+  },
+  "kev": []
+}
