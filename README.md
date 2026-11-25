@@ -20,6 +20,9 @@ El proyecto se divide en:
 - docs: documentación y threat modeling
 - .github: automatización y reglas del repositorio
 - lab: entornos de laboratorio (DAST, Sesión 8)
+- policy: política de seguridad como código (Sesión 9)
+- config: contexto de riesgo del proyecto
+- scripts: utilidades del pipeline
 
 
 ## Configuración de repositorio
@@ -52,3 +55,8 @@ Los roles completos y la tabla de "quién puede qué" están en [POL-REPO-001.md
 ## DAST (Sesión 8)
 
 Guía del laboratorio con OWASP ZAP, corrección de BOLA y entregable en [docs/sesion-08-dast/](docs/sesion-08-dast/README.md).
+
+## Security Quality Gate (Sesión 9)
+
+Política como código con OPA + Rego que decide `DEPLOY` o `BLOCK` en cada build: ver [policy/README.md](policy/README.md) y [docs/sesion-09-quality-gates/](docs/sesion-09-quality-gates/README.md).
+
