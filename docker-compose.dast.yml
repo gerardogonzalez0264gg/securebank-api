@@ -1,4 +1,4 @@
-# Entorno efimero para DAST (Sesion 8). Se crea y destruye en cada ejecucion.
+# Entorno efímero para DAST (Sesión 8). Se crea y se destruye en cada ejecución.
 #   export JWT_SECRET=$(openssl rand -base64 48) SEED_ALICE_PW=$(openssl rand -hex 12) SEED_BOB_PW=$(openssl rand -hex 12)
 #   docker compose -f docker-compose.dast.yml up -d --build
 #   curl http://localhost:8080/health
@@ -7,21 +7,21 @@ services:
   securebank:
     build:
       context: .
-      dockerfile: docker/Dockerfile.v2
+      dockerfile: docker/Dockerfile.v2   # imagen endurecida (no root, tini, sin setuptools)
     ports:
-      - "8080:8000"
+      - "8080:8000"                      # 8080 (host) -> 8000 (gunicorn)
     environment:
-      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?defínelo con openssl rand -base64 48}
       DATABASE_URL: sqlite:////data/securebank.db
       SECUREBANK_DB: /data/securebank.db
-      SEED_ALICE_PW: ${SEED_ALICE_PW:?set SEED_ALICE_PW}
-      SEED_BOB_PW: ${SEED_BOB_PW:?set SEED_BOB_PW}
+      SEED_ALICE_PW: ${SEED_ALICE_PW:?defínelo en tu shell}
+      SEED_BOB_PW: ${SEED_BOB_PW:?defínelo en tu shell}
       PYTHONPATH: /app
     volumes:
-      - ./lab:/app/lab:ro
+      - ./lab:/app/lab:ro                # seed de datos de prueba (solo lectura)
     tmpfs:
-      - /data:uid=10001,mode=0700
-      - /tmp:uid=10001,mode=1777
+      - /data:uid=10001,mode=0700        # BD efímera: desaparece con el contenedor
+      - /tmp:uid=10001,mode=1777         # gunicorn necesita /tmp para workers (read_only fix)
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
