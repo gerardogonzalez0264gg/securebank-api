@@ -1,0 +1,78 @@
+name: sesion13-supply-chain
+on:
+  push:
+    branches: [ main, "feature/**" ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  reg: ghcr.io
+  repoimg: ${{ github.repository }}/securebank
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: bajar codigo
+        uses: actions/checkout@v4
+
+      - name: setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: login ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.reg }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: build y push
+        id: mipush
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.s13
+          push: true
+          tags: ${{ env.reg }}/${{ env.repoimg }}:v1
+
+      - name: guardar digest
+        run: |
+          echo "Digest: ${{ steps.mipush.outputs.digest }}"
+          echo "DIGREF=${{ env.reg }}/${{ env.repoimg }}@${{ steps.mipush.outputs.digest }}" >> $GITHUB_ENV
+
+      - name: traer syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: generar sbom
+        run: |
+          syft ${{ env.DIGREF }} -o cyclonedx-json > sbom.json
+          echo "componentes:"
+          jq '.components | length' sbom.json
+
+      - name: subir sbom
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+
+      - name: instalar cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: firmar y attest
+        env:
+          COSIGN_YES: "true"
+        run: |
+          cosign sign ${{ env.DIGREF }}
+          cosign attest --predicate sbom.json --type cyclonedx ${{ env.DIGREF }}
+
+      - name: verificar firma
+        run: |
+          cosign verify \
+            --certificate-identity-regexp "^https://github\.com/${{ github.repository }}/.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            ${{ env.DIGREF }} || exit 1
