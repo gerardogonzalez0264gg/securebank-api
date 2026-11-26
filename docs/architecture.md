@@ -8,7 +8,7 @@ El sistema está compuesto por un frontend web, una API REST, un servicio de aut
 
 La arquitectura permite separar las responsabilidades de presentación, procesamiento de solicitudes, autenticación y almacenamiento de información.
 
-Todos los componentes se despliegan sobre infraestructura cloud definida como código (IaC, Terraform), versionada en Git, revisada por Pull Request y escaneada antes de desplegarse (ver sección 5 y `docs/pipeline.md`).
+Todos los componentes se despliegan sobre infraestructura cloud definida como código (IaC, Terraform), versionada en Git, revisada por Pull Request y escaneada antes de desplegarse (ver sección 5 y `docs/sesion-04-ci/pipeline.md`).
 
 ---
 
@@ -203,7 +203,7 @@ Reglas de red:
 | A01 Broken Access Control | Transferencias sin verificar rol | IAM con menor privilegio y Security Groups separados por rol (5.1 y 5.2). La verificación de rol dentro de la API sigue siendo responsabilidad del backend |
 | A02 Cryptographic Failures | Secretos en texto plano | Cifrado en reposo con `kms_key`, TLS obligatorio en RDS y contraseña de RDS en Secrets Manager (no está en el código). Los secretos de la aplicación quedan fuera de esta sesión |
 | A05 Security Misconfiguration | Contenedor como root · cloud abierto | Parte cloud: red segmentada, BD privada, buckets privados, sin SSH e IMDSv2 (5.1 y 5.2) |
-| A08 Integrity Failures | Pipeline sin firma ni verificación | `iac.yml`: Checkov y `terraform validate` como gate antes de `plan` y `apply`, versiones fijas, CI por OIDC y aprobación manual en producción (detalle en `docs/pipeline.md`). La firma de artefactos queda pendiente |
+| A08 Integrity Failures | Pipeline sin firma ni verificación | `iac.yml`: Checkov y `terraform validate` como gate antes de `plan` y `apply`, versiones fijas, CI por OIDC y aprobación manual en producción (detalle en `docs/sesion-04-ci/pipeline.md`). La firma de artefactos queda pendiente |
 | A09 Logging & Monitoring | Ausencia total de trazabilidad | `cloudtrail` (multi-región, a CloudWatch), `flow_logs`, logs y query logging de RDS y `s3_logs` |
 
 ---
@@ -288,7 +288,7 @@ El endpoint `POST /transfer` es especialmente relevante debido a que una falla d
 El Threat Model asociado se encuentra en:
 
 ```text
-docs/threat-model.md
+docs/sesion-03-threat-model/threat-model.md
 ```
 
 ---

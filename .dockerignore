@@ -12,7 +12,6 @@ tests/
 __pycache__/
 *.pyc
 docs/
-img/
 docker/
 .github/
 infra/

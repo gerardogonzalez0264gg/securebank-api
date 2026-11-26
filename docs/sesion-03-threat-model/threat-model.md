@@ -447,7 +447,7 @@ Como equipo, quiero que el contenedor corra con un usuario normal y no como root
 ### SS05 - Trazabilidad (T03)
 Como organización, quiero registrar las operaciones financieras realizadas, para mantener trazabilidad y facilitar la investigación de incidentes.
 
-**Fecha de próxima revisión del Threat Model:** 2026-11-13
+**Última revisión:** 2026-11-25 (contraste con la presentación de la Sesión 3 y con los controles implementados en S5–S13) · **Fecha de próxima revisión del Threat Model:** 2027-02-25
 
 ---
 

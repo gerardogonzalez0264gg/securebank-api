@@ -150,6 +150,11 @@ jobs:
           pip install semgrep==1.180.0
           semgrep scan --config p/default --metrics=off --sarif --output sast.sarif src
 
+      # Alternativa literal de la diapositiva de la Sesión 5 (comentada: el gate de S9 ya bloquea
+      # Critical/High en código propio). Descomentar si se quiere que este job falle por sí solo.
+      # - name: Semgrep OWASP Top 10 (falla con hallazgos)
+      #   run: semgrep scan --config p/owasp-top-ten --error --metrics=off src
+
       - name: Guardar reporte
         if: always()
         uses: actions/upload-artifact@v4
@@ -180,7 +185,32 @@ jobs:
           trivy --version
 
       - name: "Escanear dependencias (no falla por hallazgos: decide el gate)"
-        run: trivy fs --scanners vuln --format json --output sca.json .
+        run: trivy fs --scanners vuln --skip-dirs reports,docs,material-curso --format json --output sca.json .
+
+      # ── Entregables de la Sesión 6 (comentados, no se ejecutan) ──
+      # Generan desde el pipeline los archivos que hoy están en reports/ (creados a mano
+      # el 2026-11-25 con pip-audit + cyclonedx-py, ver reports/README.md).
+      # - name: SBOM CycloneDX 1.5 (reports/securebank-sbom.cdx.json)
+      #   run: |
+      #     mkdir -p reports
+      #     trivy fs --format cyclonedx --output reports/securebank-sbom.cdx.json .
+      #
+      # - name: Reporte de vulnerabilidades (reports/securebank-vulns.html + .json)
+      #   run: |
+      #     pip install pip-audit==2.10.1
+      #     pip-audit -r requirements.txt -f json -o reports/securebank-vulns.json || true
+      #     trivy fs --scanners vuln --format template \
+      #       --template "@contrib/html.tpl" --output reports/securebank-vulns.html .
+      #
+      # - name: Semáforo CVSS (CVSS >= 9 bloquea el job)
+      #   run: |
+      #     trivy fs --scanners vuln --severity CRITICAL --exit-code 1 .
+      #
+      # - name: Guardar entregables S6
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: s6-reports-${{ github.sha }}
+      #     path: reports/
 
       - name: Guardar reporte
         if: always()

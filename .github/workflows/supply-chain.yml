@@ -36,9 +36,13 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.s13
+          # Imagen real de SecureBank (endurecida en S10). Antes: docker/Dockerfile.s13 (alpine + echo de prueba).
+          file: docker/Dockerfile.v2
           push: true
-          tags: ${{ env.reg }}/${{ env.repoimg }}:v1
+          # :v1 lo pide la rúbrica de S13; el tag con el SHA del commit no se sobrescribe y da trazabilidad.
+          tags: |
+            ${{ env.reg }}/${{ env.repoimg }}:v1
+            ${{ env.reg }}/${{ env.repoimg }}:${{ github.sha }}
 
       - name: guardar digest
         run: |
@@ -76,3 +80,37 @@ jobs:
             --certificate-identity-regexp "^https://github\.com/${{ github.repository }}/.*" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             ${{ env.DIGREF }} || exit 1
+
+      # Evidencia de Rekor (comentado): imprime la entrada del transparency log para el reporte de S13.
+      # - name: evidencia rekor
+      #   run: |
+      #     cosign verify --output json \
+      #       --certificate-identity-regexp "^https://github\.com/${{ github.repository }}/.*" \
+      #       --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+      #       ${{ env.DIGREF }} | jq '.[0].optional.Bundle.Payload.logIndex'
+      #     echo "Buscar en https://search.sigstore.dev/?logIndex=<logIndex>"
+
+  # Job de verificación separado que bloquea el deploy (comentado: no hay entorno de deploy real).
+  # Para activarlo, exponer el digest como output del job "pipeline":
+  #   outputs:
+  #     digref: ${{ env.reg }}/${{ env.repoimg }}@${{ steps.mipush.outputs.digest }}
+  #
+  # verify:
+  #   needs: pipeline
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #   steps:
+  #     - uses: sigstore/cosign-installer@v3
+  #     - name: cosign verify (si falla, no hay deploy)
+  #       run: |
+  #         cosign verify \
+  #           --certificate-identity-regexp "^https://github\.com/${{ github.repository }}/.*" \
+  #           --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  #           ${{ needs.pipeline.outputs.digref }}
+  #
+  # deploy:
+  #   needs: verify
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - run: echo "kubectl apply -f k8s/hardened/deployment.hardened.yaml (con el digest verificado)"

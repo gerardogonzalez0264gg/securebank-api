@@ -1,7 +1,7 @@
 # Reporte — Sesión 13: Supply Chain Security
 
 - Rama: feature/supply-chain-13 -> main
-- Archivos clave: Dockerfile.s13 (en la raíz) y .github/workflows/supply-chain.yml
+- Archivos clave: docker/Dockerfile.s13 y .github/workflows/supply-chain.yml (el Dockerfile estuvo en la raíz; se movió a `docker/` al ordenar el repo)
 
 ## 1. Registros en el workflow
 - Listo el job pipeline en sesion13-supply-chain para hacer el build y subir la imagen a ghcr.io.
