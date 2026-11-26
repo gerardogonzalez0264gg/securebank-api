@@ -1,3 +1,11 @@
+# Corrige el manifiesto M2 (api-deployment.yaml) del ejercicio de la Sesión 12: la API corría como root.
+# Validación automática (comentada, requiere las herramientas instaladas):
+#   kubesec scan k8s/hardened/deployment.hardened.yaml
+#   kube-score score k8s/hardened/deployment.hardened.yaml
+#   kubectl apply --dry-run=server -f k8s/hardened/deployment.hardened.yaml
+# El digest de la imagen es de EJEMPLO: reemplazarlo por el que publica el workflow de S13
+# (línea "Digest: sha256:..." del job pipeline en supply-chain.yml), con el registro completo:
+#   ghcr.io/<org>/securebank-api/securebank@sha256:<digest>
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,7 +32,20 @@ spec:
             capabilities:
               drop:
                 - ALL
+          # Variables que exige src/config.py: la app no arranca si faltan.
+          # Secret previo (fuera del repo): kubectl create secret generic securebank \
+          #   --from-literal=jwt-secret="$(openssl rand -base64 48)" --from-literal=database-url="<url>"
           env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: securebank
+                  key: jwt-secret
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: securebank
+                  key: database-url
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:

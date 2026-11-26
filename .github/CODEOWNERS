@@ -1,1 +1,25 @@
-* @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+# CODEOWNERS · SecureBank API (POL-REPO-001 §2 y §4, R.02)
+# La última regla que calza gana. Un Code Owner debe aprobar los cambios de su carpeta.
+#
+# TODO(equipo): definir quién es el Lead de seguridad y quién es el SRE, y dejar en las
+# rutas sensibles solo a esas personas (hoy figuran los 4 integrantes en todas las reglas).
+
+# Por defecto: todo el equipo
+*                               @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+
+# Código sensible (R.02: 2 aprobaciones si toca auth o transfers)
+/src/auth/                      @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+/src/transfers/                 @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+/src/config.py                  @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+
+# Pipeline y gate: Lead de seguridad + SRE (matriz §4 "cambiar pipelines")
+/.github/                       @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+/policy/                        @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+/config/                        @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+/scripts/                       @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+/.gitleaks.toml                 @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+
+# Infraestructura y despliegue: SRE
+/infra/                         @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+/k8s/                           @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur
+/docker/                        @gerardogonzalez0264gg @Cristo2121 @Erolayer-Cl @TungTungDayumSahur

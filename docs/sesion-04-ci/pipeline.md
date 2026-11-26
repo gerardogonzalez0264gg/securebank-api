@@ -45,7 +45,7 @@ Commit -> IaC Scan + Validate (gate) -> Plan -> Apply
 
 - Complemento opcional: `trivy config ./terraform`.
 - Archivo: `.github/workflows/iac.yml`. Se activa al cambiar `infra/**`. `plan` y `apply` solo corren si el repositorio define `AWS_ROLE_ARN` y las demás variables descritas en `infra/README.md`.
-- Checkov OSS no asigna severidad, así que el gate falla ante cualquier hallazgo. Resultados, checks omitidos y motivos: `infra/README.md` y `docs/iac-report/checkov-after.json`.
+- Checkov OSS no asigna severidad, así que el gate falla ante cualquier hallazgo. Resultados, checks omitidos y motivos: `infra/README.md` y `docs/sesion-11-iac/checkov-after.json`.
 - Criterios de aceptación: un commit con violación CRITICAL bloquea el pipeline, Security Score final de 85 % o más, cero hallazgos CRITICAL o HIGH abiertos, y reportes Checkov before/after en JSON.
 - Security Score = (checks aprobados / checks totales) × 100.
 
@@ -88,9 +88,31 @@ SecureBank es un banco, así que lo correcto sería entrega continua, con aproba
 - Usar solo acciones confiables y con versión fija.
 - Mantener el pipeline versionado y revisado por PR.
 
-## Estado actual
+## Estado actual (2026-11-25)
 
-El pipeline CI v1.0 funciona. La etapa IaC Security ya tiene su workflow (`iac.yml`) y el módulo Terraform (`infra/terraform/`), con Checkov y `terraform validate` en el CI. Falta ejecutar `plan`/`apply` contra AWS y generar el reporte "before".
+El CI v1.0 de esta sesión fue creciendo con cada clase. Hoy hay tres workflows:
+
+```text
+ci.yml
+  secret-scan (Gitleaks, S7) ─┬─> build (CI v1.0, S4) ──> dast (pytest security + ZAP, S8) ─┐
+                              ├─> sast (Semgrep, S5) ───────────────────────────────────────┤
+                              ├─> sca (Trivy, S6) ──────────────────────────────────────────┼─> gate (OPA, S9)
+                              └─> coverage (pytest-cov) ────────────────────────────────────┘
+iac.yml           iac-scan (Checkov) + terraform-validate ─> plan ─> apply con aprobación (S11)
+supply-chain.yml  build y push por digest ─> SBOM (Syft) ─> cosign sign/attest ─> cosign verify (S13)
+```
+
+| Job | Sesión | Qué hace | ¿Bloquea? |
+|---|---|---|---|
+| `secret-scan` | S7 | Gitleaks sobre todo el historial | Sí, con exit 1 si hay un secreto |
+| `build` | S4 | checkout → `npm ci` → build → test → artefacto `dist-<sha>` (7 días) | Si falla el build |
+| `sast` | S5 | Semgrep `p/default` → `sast.sarif` | No; decide el gate |
+| `sca` | S6 | Trivy fs → `sca.json` (pasos de SBOM y reporte comentados, ver `reports/README.md`) | No; decide el gate |
+| `coverage` | S9 | `pytest --cov=src` → `coverage.json` | Si falla un test |
+| `dast` | S8 | Tests de seguridad + ZAP baseline sobre un contenedor efímero | No (`-I`); decide el gate |
+| `gate` | S9 | Consolida todo en `findings.json` y evalúa `policy/security-policy-v1.rego` | **Sí**: `BLOCK` → exit 1 (falla cerrada con `if: always()`) |
+
+Pendiente: los `plan`/`apply` de `iac.yml` solo corren cuando se configuran las variables de AWS, y el job `build` sigue siendo el de Node de esta sesión (de relleno).
 
 ## Etapa DAST (Sesión 8)
 

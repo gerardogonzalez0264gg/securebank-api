@@ -2,12 +2,17 @@
 
 Un plan por cada hallazgo High o Medium. Cada fila se cierra solo cuando un **nuevo scan de ZAP ya no reporta el hallazgo** (principio base de los Quality Gates de la Sesión 9).
 
+> ⚠️ Las filas de CSP `form-action` (ZAP 10055), cabecera `Server` (10036) y Spectre (90004) salen del **resultado ilustrativo** de [reporte-dast.md](reporte-dast.md) §2.2: confirmarlas o descartarlas con el `report.json` real del job `dast`.
+
 | Hallazgo | Acción correctiva | Responsable | Plazo | Verificación |
 |---|---|---|---|---|
 | BOLA · `GET /users/{id}` (API1, CWE-639, T04) | Ownership check centralizado: `require_owner` compara `token.sub` con el id del recurso; rol admin como excepción; audit log de intentos | Backend team | Sprint 1 | `pytest tests/security/test_bola.py`: `/users/otro → 403` |
 | Cabeceras ausentes · CSP, HSTS, X-Frame-Options (A05, CWE-693/1021/319) | `after_request` con `SECURITY_HEADERS` en `src/app.py` (equivalente a `helmet()` en Express) | Backend team | Sprint 1 | Re-scan ZAP: hallazgo cerrado; `test_headers_de_seguridad_presentes` |
 | Cookies inseguras · `session` (CWE-1004/614) | La API usa Bearer JWT y no emite cookies; si se agregan, `HttpOnly` + `Secure` + `SameSite=Strict` | Backend team | Sprint 1 | Inspección de `Set-Cookie`; re-scan ZAP |
 | IDs secuenciales predecibles (refuerzo BOLA) | Migrar `users.id` a UUID v4 | Backend team + DBA | Sprint 2 | Revisión de esquema; sin IDs enumerables en respuestas |
+| CSP sin `form-action` (Medium, ZAP 10055, CWE-693) | Agregar `form-action 'none'; base-uri 'none'` a `Content-Security-Policy` en `SECURITY_HEADERS` | Backend team | Sprint 2 | Re-scan ZAP sin la alerta 10055 |
+| Server leaks version (Low, ZAP 10036, CWE-497) | Ocultar `Server: gunicorn` (proxy/ALB que reescribe la cabecera, o `gunicorn.SERVER = ""` en la configuración) | SRE | Sprint 2 | Re-scan ZAP sin la alerta 10036 |
+| Aislamiento Spectre (Low, ZAP 90004, CWE-693) | Agregar `Cross-Origin-Resource-Policy: same-origin` y `Cross-Origin-Opener-Policy: same-origin` | Backend team | Sprint 2 | Re-scan ZAP sin la alerta 90004 |
 | Cobertura limitada del crawler en API JSON | Publicar `openapi.yaml` y correr `zap-api-scan.py` en nightly/release | Seguridad + Backend | Sprint 2 | Nightly con endpoints `/users/{id}` y `/login` descubiertos |
 
 ## Política aplicable (POL-REPO-001)

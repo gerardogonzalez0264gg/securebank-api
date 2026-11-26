@@ -352,3 +352,18 @@ Riesgos que quedan:
 - La imagen no está firmada.
 - Los secretos van por variable de entorno, sin gestor de secretos.
 - Falta un job de Trivy en el CI.
+
+## 6. Actualización 2026-11-25
+
+Estado de los riesgos residuales después de las sesiones siguientes:
+
+| Riesgo residual (§5) | Estado | Dónde |
+|---|---|---|
+| Sin `--read-only` ni `--cap-drop=ALL` | Mitigado en ejecución | `docker-compose.dast.yml` (`read_only`, `cap_drop: [ALL]`, `no-new-privileges`) y `k8s/hardened/deployment.hardened.yaml` (`readOnlyRootFilesystem`, `drop: ALL`) |
+| Imagen sin firmar | Mitigado | `supply-chain.yml` firma con Cosign la imagen de `docker/Dockerfile.v2` (S13) |
+| Secretos por variable de entorno sin gestor | Documentado | `docs/SECRETS.md` (GitHub Secrets / Vault, `secretKeyRef` en K8s) |
+| Falta Trivy en CI | Parcial | Job `sca` (Trivy fs) en `ci.yml`; el escaneo de la imagen sigue pendiente |
+| 3 HIGH con parche disponible | Pendiente | Paso sugerido comentado en `docker/Dockerfile.v2` (`apt-get upgrade`); volver a escanear con `trivy image --ignore-unfixed` |
+| 47 HIGH sin parche | Aceptado y monitoreado | Sin corrección publicada en Debian; se revisan en cada rebuild |
+
+Sobre la mejora en vulnerabilidades: el 0 de v1 viene de `ubuntu:latest` el día del escaneo (ver nota de §2) y no es comparable. La mejora medible de v2 es contra su propio primer escaneo (173 → 50), más la reducción de superficie: −43 % de tamaño, −35 % de paquetes, sin root y sin puerto 22.

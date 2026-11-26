@@ -3,6 +3,7 @@ FROM python:3.11.17-slim-trixie
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
+# Opcional (S10): para corregir los 3 HIGH con parche, agregar "apt-get upgrade -y &&" después de apt-get update.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends tini && \
     rm -rf /var/lib/apt/lists/*

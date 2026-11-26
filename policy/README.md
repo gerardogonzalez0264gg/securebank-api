@@ -77,6 +77,6 @@ La v1.0 no tiene waivers: no hay reglas «de aviso» ni bypass en el pipeline. U
 
 ## Decisiones a revisar
 
-`config/security-context.json` declara hoy `mitigations: ["waf", "rate_limiting"]`. Eso suma 4 High al límite y habilita hasta 3 SCA Critical. Antes de aceptarlo, verifica que ambos controles existan de verdad: en `infra/terraform/alb.tf` el WAF está explícitamente omitido (`checkov:skip=CKV2_AWS_28`, «pertenece a la etapa Operate»), y `src/` no implementa rate limiting. Mientras no estén desplegados, la declaración relaja el gate sin respaldo. Además, permitir SCA Critical contradice la regla de la Sesión 9 («Critical = 0»).
+**Decisión tomada (2026-11-25):** `config/security-context.json` declaraba `mitigations: ["waf", "rate_limiting"]`, lo que sumaba 4 High al límite y habilitaba hasta 3 SCA Critical, pero ninguno de los dos controles existe: en `infra/terraform/alb.tf` el WAF está omitido (`checkov:skip=CKV2_AWS_28`, «pertenece a la etapa Operate») y `src/` no implementa rate limiting. Se dejó `mitigations: []`, así que hoy rige el contexto estricto: `max_sca_critical := 0` y `max_sca_high := 2`, coherente con la regla de la Sesión 9 («Critical = 0») y con el semáforo CVSS de la Sesión 6. Solo se vuelven a declarar cuando estén desplegados, con aprobación del Lead de seguridad.
 
 Regla práctica: si cambias umbrales en el `.rego`, actualiza `security-policy-v1_test.rego` en el mismo commit; `scripts/gate.sh` no decide con una política cuyos tests fallan.

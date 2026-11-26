@@ -1,6 +1,6 @@
 # Infraestructura (Terraform) · SecureBank API
 
-Esqueleto de infraestructura como código de la Sesión 11 (IaC y Cloud Security). Define los 20 recursos del stack y los recursos de apoyo que necesitan. El diseño y los controles están en `docs/architecture.md` (sección 5) y el pipeline en `docs/pipeline.md`.
+Esqueleto de infraestructura como código de la Sesión 11 (IaC y Cloud Security). Define los 20 recursos del stack y los recursos de apoyo que necesitan. El diseño y los controles están en `docs/architecture.md` (sección 5) y el pipeline en `docs/sesion-04-ci/pipeline.md`.
 
 ```text
 infra/terraform/
@@ -29,7 +29,7 @@ pip install checkov==3.4.6
 checkov -d . --framework terraform --compact
 ```
 
-Estado actual: Checkov con 307 aprobados, 0 fallidos y 15 omitidos (`docs/iac-report/checkov-after.json`). `terraform validate` lo ejecuta el CI. `terraform plan` necesita credenciales de AWS y estado remoto, así que corre en el job `plan` cuando se configuran las variables de abajo.
+Estado actual: Checkov con 307 aprobados, 0 fallidos y 15 omitidos (`docs/sesion-11-iac/checkov-after.json`). `terraform validate` lo ejecuta el CI. `terraform plan` necesita credenciales de AWS y estado remoto, así que corre en el job `plan` cuando se configuran las variables de abajo.
 
 ## Variables del repositorio (Settings → Variables)
 

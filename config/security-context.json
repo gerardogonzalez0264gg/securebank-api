@@ -1,6 +1,6 @@
 {
-  "_comment": "Contexto de riesgo de SecureBank API. Cambiar este archivo relaja o endurece el gate: requiere aprobacion del Lead de seguridad (CODEOWNERS + POL-REPO-001 R.02).",
+  "_comment": "Contexto de riesgo de SecureBank API. Cambiar este archivo relaja o endurece el gate: requiere aprobacion del Lead de seguridad (CODEOWNERS + POL-REPO-001 R.02). 'mitigations' queda vacio porque el WAF (omitido en infra/terraform/alb.tf, CKV2_AWS_28) y el rate limiting no estan desplegados: declararlos relajaba el gate sin respaldo. Agregarlos solo cuando existan de verdad.",
   "business_criticality": "critical",
   "exposure_level": "internet",
-  "mitigations": ["waf", "rate_limiting"]
+  "mitigations": []
 }
